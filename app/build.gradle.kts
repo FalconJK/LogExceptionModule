@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -29,6 +30,9 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
 }
 
 dependencies {
@@ -37,6 +41,14 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.rxandroid)
+    implementation(libs.rxjava)
+    implementation(libs.core.ktx)
+//    implementation ("com.jakewharton.timber:timber:5.0.1")
+    debugImplementation (libs.leakcanary.android)
+    implementation ("androidx.lifecycle:lifecycle-process:2.7.0")
+    implementation ("androidx.lifecycle:lifecycle-runtime:2.7.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
