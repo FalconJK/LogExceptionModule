@@ -41,19 +41,29 @@ public class TimberProcessor {
                 .onBackpressureBuffer()
                 .flatMap(logEntry -> {
                     List<Tree> trees = Forest.forest();
+                    int maxConcurrency = Math.min(trees.size(), Runtime.getRuntime().availableProcessors());
+
                     return Flowable.fromIterable(trees)
-                            .parallel()
-                            .runOn(Schedulers.io())
-                            .map(tree -> {
-                                if (tree.isLoggable(logEntry.tag, logEntry.priority)) {
-                                    tree.log(logEntry.priority, logEntry.tag, logEntry.message, logEntry.throwable);
-                                }
-                                return tree;
-                            })
-                            .sequential();
+                            .flatMap(
+                                    tree -> processTree(tree, logEntry),
+                                    true,  // 啟用並行處理
+                                    maxConcurrency  // 限制並行度
+                            );
                 })
                 .subscribe()
         );
+    }
+
+    // 將樹的處理邏輯提取為單獨的方法
+    private Flowable<Tree> processTree(Tree tree, LogEntry logEntry) {
+        return Flowable.just(tree)
+                .observeOn(tree.getScheduler())
+                .map(t -> {
+                    if (t.isLoggable(logEntry.tag, logEntry.priority)) {
+                        t.log(logEntry.priority, logEntry.tag, logEntry.message, logEntry.throwable);
+                    }
+                    return t;
+                });
     }
 
     /**

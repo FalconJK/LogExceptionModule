@@ -8,11 +8,22 @@ import org.jetbrains.annotations.Nullable;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+
 /**
  * 處理日誌調用的外觀。通過 {@link Timber#plant} 安裝實例。
  */
 public abstract class Tree implements LoggerInterface {
     private final ThreadLocal<String> explicitTag = new ThreadLocal<>();
+
+    /**
+     * 獲取此樹應該在哪個調度器上執行
+     * 默認返回IO調度器
+     */
+    protected Scheduler getScheduler() {
+        return Schedulers.io();
+    }
 
     @Nullable
     String getTag() {

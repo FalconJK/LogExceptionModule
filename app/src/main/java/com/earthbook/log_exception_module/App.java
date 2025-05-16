@@ -13,8 +13,9 @@ public class App extends Application {
 
         // 植入調試樹
         Timber.plant(new DebugTree());
+        Timber.plant(new ToastTree(getApplicationContext()));
 
-        Timber.d("應用程序已啟動");
+//        Timber.d("應用程序已啟動");
     }
 
     @Override

@@ -41,9 +41,6 @@ public class MainActivity extends AppCompatActivity {
 
         // 初始化所有按鈕
         initButtons();
-
-        // 基本日誌測試
-        Timber.d("MainActivity 已創建");
     }
 
     private void initButtons() {
@@ -51,42 +48,36 @@ public class MainActivity extends AppCompatActivity {
         Button btnTestDebug = findViewById(R.id.btnTestDebug);
         btnTestDebug.setOnClickListener(v -> {
             Timber.d("這是一條調試日誌");
-            showToast("Debug 日誌已發送，請查看 Logcat");
         });
 
         // Verbose 日誌測試
         Button btnTestVerbose = findViewById(R.id.btnTestVerbose);
         btnTestVerbose.setOnClickListener(v -> {
             Timber.v("這是一條詳細日誌");
-            showToast("Verbose 日誌已發送，請查看 Logcat");
         });
 
         // Info 日誌測試
         Button btnTestInfo = findViewById(R.id.btnTestInfo);
         btnTestInfo.setOnClickListener(v -> {
             Timber.i("這是一條信息日誌");
-            showToast("Info 日誌已發送，請查看 Logcat");
         });
 
         // Warning 日誌測試
         Button btnTestWarning = findViewById(R.id.btnTestWarning);
         btnTestWarning.setOnClickListener(v -> {
             Timber.w("這是一條警告日誌");
-            showToast("Warning 日誌已發送，請查看 Logcat");
         });
 
         // Error 日誌測試
         Button btnTestError = findViewById(R.id.btnTestError);
         btnTestError.setOnClickListener(v -> {
             Timber.e("這是一條錯誤日誌");
-            showToast("Error 日誌已發送，請查看 Logcat");
         });
 
         // WTF 日誌測試
         Button btnTestWtf = findViewById(R.id.btnTestWtf);
         btnTestWtf.setOnClickListener(v -> {
             Timber.wtf("這是一條嚴重錯誤日誌");
-            showToast("WTF 日誌已發送，請查看 Logcat");
         });
 
         // 異常日誌測試
@@ -96,7 +87,6 @@ public class MainActivity extends AppCompatActivity {
                 throw new RuntimeException("測試異常");
             } catch (Exception e) {
                 Timber.e(e, "捕獲到異常");
-                showToast("異常日誌已發送，請查看 Logcat");
             }
         });
 
@@ -110,14 +100,12 @@ public class MainActivity extends AppCompatActivity {
             Timber.tag("CustomTag").e("這是一條帶有自定義標籤的日誌");
             Timber.tag("CustomTag").wtf("這是一條帶有自定義標籤的日誌");
 
-            showToast("自定義標籤日誌已發送，請查看 Logcat");
         });
 
         // 格式化日誌測試
         Button btnTestFormatting = findViewById(R.id.btnTestFormatting);
         btnTestFormatting.setOnClickListener(v -> {
             Timber.d("格式化測試: %d, %s, %.2f", 123, "字符串", 3.14159);
-            showToast("格式化日誌已發送，請查看 Logcat");
         });
 
         // 多樹植入測試
@@ -148,7 +136,6 @@ public class MainActivity extends AppCompatActivity {
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(aLong -> {
                         Timber.uproot(customTree);
-                        showToast("自定義樹已移除");
                     });
 
             disposables.add(disposable);
@@ -159,14 +146,13 @@ public class MainActivity extends AppCompatActivity {
         btnClearDisposables.setOnClickListener(v -> {
             Timber.clearDisposables();
             disposables.clear();
-            showToast("所有訂閱已清理");
         });
 
         // 測試應用程序生命週期
         Button btnTestAppLifecycle = findViewById(R.id.btnTestAppLifecycle);
         btnTestAppLifecycle.setOnClickListener(v -> {
             // 模擬應用程序進入後台
-            showToast("請按 Home 鍵將應用置於後台，觀察生命週期日誌");
+//            showToast("請按 Home 鍵將應用置於後台，觀察生命週期日誌");
 
             // 添加一個延遲任務，模擬後台任務
             Disposable disposable = Observable.timer(5, TimeUnit.SECONDS)
@@ -181,10 +167,6 @@ public class MainActivity extends AppCompatActivity {
             disposables.add(disposable);
         });
 
-    }
-
-    private void showToast(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     @Override
