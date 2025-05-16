@@ -2,6 +2,7 @@ package com.earthbook.log_exception_module;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
@@ -100,7 +101,13 @@ public class MainActivity extends AppCompatActivity {
         // 自定義標籤測試
         Button btnTestCustomTag = findViewById(R.id.btnTestCustomTag);
         btnTestCustomTag.setOnClickListener(v -> {
+            Timber.tag("CustomTag").v("這是一條帶有自定義標籤的日誌");
             Timber.tag("CustomTag").d("這是一條帶有自定義標籤的日誌");
+            Timber.tag("CustomTag").i("這是一條帶有自定義標籤的日誌");
+            Timber.tag("CustomTag").w("這是一條帶有自定義標籤的日誌");
+            Timber.tag("CustomTag").e("這是一條帶有自定義標籤的日誌");
+            Timber.tag("CustomTag").wtf("這是一條帶有自定義標籤的日誌");
+
             showToast("自定義標籤日誌已發送，請查看 Logcat");
         });
 
@@ -119,8 +126,11 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 protected void log(int priority, String tag, String message, Throwable t) {
                     // 將日誌輸出到 Toast
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this,
-                            "自定義樹: " + message, Toast.LENGTH_SHORT).show());
+
+                    Log.println(priority, "自定義" + tag, message);
+
+//                    runOnUiThread(() -> Toast.makeText(MainActivity.this,
+//                            "自定義樹: " + message, Toast.LENGTH_SHORT).show());
                 }
             };
 
@@ -131,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
             Timber.d("這條日誌會同時發送到 Logcat 和 Toast");
 
             // 測試完成後移除自定義樹
-            Disposable disposable = Observable.timer(3, TimeUnit.SECONDS)
+            Disposable disposable = Observable.timer(20, TimeUnit.SECONDS)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(aLong -> {

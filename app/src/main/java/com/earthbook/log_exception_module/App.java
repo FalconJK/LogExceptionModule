@@ -8,21 +8,15 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
 
-        // 初始化 Timber
-        Timber.init(this);
-
         // 植入調試樹
         Timber.plant(new Timber.DebugTree());
 
-//        Timber.d("應用程序已啟動");
+        Timber.d("應用程序已啟動");
     }
 
     @Override
     public void onTerminate() {
         super.onTerminate();
-
-        // 釋放 Timber 資源
-        Timber.release();
     }
 
     @Override

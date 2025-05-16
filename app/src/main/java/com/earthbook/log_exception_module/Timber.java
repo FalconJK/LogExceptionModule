@@ -1,52 +1,64 @@
 package com.earthbook.log_exception_module;
 
-import android.app.Application;
 import android.os.Build;
 import android.util.Log;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.processors.PublishProcessor;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
-import androidx.lifecycle.DefaultLifecycleObserver;
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleObserver;
-import androidx.lifecycle.LifecycleOwner;
-import androidx.lifecycle.OnLifecycleEvent;
-import androidx.lifecycle.ProcessLifecycleOwner;
-
 /**
- * 為懶人設計的日誌工具。
+ * Logging for lazy people.
  */
 public final class Timber {
 
-    // 保存所有已植入的樹
-    private static final CopyOnWriteArrayList<Tree> FOREST = new CopyOnWriteArrayList<>();
+    private static final List<String> TIMBER_CLASSES = List.of(
+            Timber.class.getName(),
+            Forest.class.getName(),
+            Tree.class.getName()
+    );
 
-    // 用於管理所有 RxJava 訂閱
-    private static final CompositeDisposable DISPOSABLES = new CompositeDisposable();
+    private static final int MAX_TAG_LENGTH = 23;
+    private static final Pattern ANONYMOUS_CLASS = Pattern.compile("(\\$\\d+)+$");
 
-    // 應用程序生命週期觀察者
-    private static ApplicationLifecycleObserver lifecycleObserver;
+    // 單例 Subject 用於接收所有日誌訊息
+    private static final PublishProcessor<LogEntry> logProcessor = PublishProcessor.create();
 
-    // 應用程序上下文
-    private static Application application;
+    // 用於管理所有訂閱
+    private static final CompositeDisposable disposables = new CompositeDisposable();
 
-    // 用於保存當前標籤的類
-    private static final class TagHolder {
-        @Nullable
-        static String tag;
+    static {
+        // 初始化 RxJava 處理流程
+        disposables.add(logProcessor
+                .onBackpressureBuffer()
+                .flatMap(logEntry -> {
+                    List<Tree> trees = Forest.forest();
+                    return Flowable.fromIterable(trees)
+                            .parallel()
+                            .runOn(Schedulers.io())
+                            .map(tree -> {
+                                if (tree.isLoggable(logEntry.tag, logEntry.priority)) {
+                                    tree.log(logEntry.priority, logEntry.tag, logEntry.message, logEntry.throwable);
+                                }
+                                return tree;
+                            })
+                            .sequential();
+                })
+                .subscribe()
+        );
     }
 
     private Timber() {
@@ -54,548 +66,291 @@ public final class Timber {
     }
 
     /**
-     * 初始化 Timber 並設置應用程序上下文
+     * Log entry containing all information needed for logging
      */
-    public static void init(Application app) {
-        application = app;
-
-        // 初始化生命週期觀察者
-        if (lifecycleObserver == null) {
-            lifecycleObserver = new ApplicationLifecycleObserver();
-        }
-
-        // 註冊內存監控
-        registerMemoryMonitor(app);
-    }
-    /**
-     * 註冊內存監控
-     */
-    private static void registerMemoryMonitor(Application app) {
-        app.registerComponentCallbacks(new android.content.ComponentCallbacks2() {
-            @Override
-            public void onTrimMemory(int level) {
-                if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) {
-                    // 當系統內存極低時，清理所有可清理的資源
-                    Timber.tag("Timber").d("系統內存極低，清理所有可清理的資源");
-                    DISPOSABLES.clear();
-                }
-            }
-
-            @Override
-            public void onConfigurationChanged(android.content.res.Configuration newConfig) {
-                // 配置變更時的處理
-            }
-
-            @Override
-            public void onLowMemory() {
-                // 低內存警告時，清理所有 Disposable
-                Timber.tag("Timber").d("系統內存不足，清理所有 Disposable");
-                DISPOSABLES.clear();
-            }
-        });
-    }
-
-    /**
-     * 釋放 Timber 資源
-     */
-    public static void release() {
-        if (lifecycleObserver != null) {
-            lifecycleObserver.unregister();
-            lifecycleObserver = null;
-        }
-
-        clearDisposables();
-        uprootAll();
-        application = null;
-    }
-
-    /**
-     * 獲取應用程序上下文
-     */
-    public static Application getApplication() {
-        return application;
-    }
-
-    /**
-     * 添加一棵樹到森林中
-     */
-    public static void plant(Tree tree) {
-        if (tree == null) {
-            throw new NullPointerException("tree == null");
-        }
-        FOREST.add(tree);
-    }
-
-    /**
-     * 添加多棵樹到森林中
-     */
-    public static void plant(Tree... trees) {
-        if (trees == null) {
-            throw new NullPointerException("trees == null");
-        }
-        for (Tree tree : trees) {
-            if (tree == null) {
-                throw new NullPointerException("tree == null");
-            }
-            FOREST.add(tree);
-        }
-    }
-
-    /**
-     * 從森林中移除一棵樹
-     */
-    public static void uproot(Tree tree) {
-        if (tree == null) {
-            throw new NullPointerException("tree == null");
-        }
-        FOREST.remove(tree);
-    }
-
-    /**
-     * 移除所有已植入的樹
-     */
-    public static void uprootAll() {
-        FOREST.clear();
-    }
-
-    /**
-     * 清除所有 RxJava 訂閱
-     */
-    public static void clearDisposables() {
-        DISPOSABLES.clear();
-    }
-
-    /**
-     * 獲取所有已植入的樹
-     */
-    public static List<Tree> forest() {
-        return Collections.unmodifiableList(FOREST);
-    }
-
-    /**
-     * 獲取已植入的樹的數量
-     */
-    public static int treeCount() {
-        return FOREST.size();
-    }
-
-    /**
-     * 設置下一個日誌調用的標籤。
-     */
-    public static Tree tag(String tag) {
-        TagHolder.tag = tag;
-        return TREE_OF_SOULS;
-    }
-
-    /**
-     * 記錄詳細(verbose)級別的訊息，可選格式化參數。
-     */
-    public static void v(@Nullable String message, Object... args) {
-        TREE_OF_SOULS.v(message, args);
-    }
-
-    /**
-     * 記錄詳細(verbose)級別的異常和訊息，可選格式化參數。
-     */
-    public static void v(@Nullable Throwable t, @Nullable String message, Object... args) {
-        TREE_OF_SOULS.v(t, message, args);
-    }
-
-    /**
-     * 記錄詳細(verbose)級別的異常。
-     */
-    public static void v(@Nullable Throwable t) {
-        TREE_OF_SOULS.v(t);
-    }
-
-    /**
-     * 記錄調試(debug)級別的訊息，可選格式化參數。
-     */
-    public static void d(@Nullable String message, Object... args) {
-        TREE_OF_SOULS.d(message, args);
-    }
-
-    /**
-     * 記錄調試(debug)級別的異常和訊息，可選格式化參數。
-     */
-    public static void d(@Nullable Throwable t, @Nullable String message, Object... args) {
-        TREE_OF_SOULS.d(t, message, args);
-    }
-
-    /**
-     * 記錄調試(debug)級別的異常。
-     */
-    public static void d(@Nullable Throwable t) {
-        TREE_OF_SOULS.d(t);
-    }
-
-    /**
-     * 記錄資訊(info)級別的訊息，可選格式化參數。
-     */
-    public static void i(@Nullable String message, Object... args) {
-        TREE_OF_SOULS.i(message, args);
-    }
-
-    /**
-     * 記錄資訊(info)級別的異常和訊息，可選格式化參數。
-     */
-    public static void i(@Nullable Throwable t, @Nullable String message, Object... args) {
-        TREE_OF_SOULS.i(t, message, args);
-    }
-
-    /**
-     * 記錄資訊(info)級別的異常。
-     */
-    public static void i(@Nullable Throwable t) {
-        TREE_OF_SOULS.i(t);
-    }
-
-    /**
-     * 記錄警告(warning)級別的訊息，可選格式化參數。
-     */
-    public static void w(@Nullable String message, Object... args) {
-        TREE_OF_SOULS.w(message, args);
-    }
-
-    /**
-     * 記錄警告(warning)級別的異常和訊息，可選格式化參數。
-     */
-    public static void w(@Nullable Throwable t, @Nullable String message, Object... args) {
-        TREE_OF_SOULS.w(t, message, args);
-    }
-
-    /**
-     * 記錄警告(warning)級別的異常。
-     */
-    public static void w(@Nullable Throwable t) {
-        TREE_OF_SOULS.w(t);
-    }
-
-    /**
-     * 記錄錯誤(error)級別的訊息，可選格式化參數。
-     */
-    public static void e(@Nullable String message, Object... args) {
-        TREE_OF_SOULS.e(message, args);
-    }
-
-    /**
-     * 記錄錯誤(error)級別的異常和訊息，可選格式化參數。
-     */
-    public static void e(@Nullable Throwable t, @Nullable String message, Object... args) {
-        TREE_OF_SOULS.e(t, message, args);
-    }
-
-    /**
-     * 記錄錯誤(error)級別的異常。
-     */
-    public static void e(@Nullable Throwable t) {
-        TREE_OF_SOULS.e(t);
-    }
-
-    /**
-     * 記錄斷言(assert)級別的訊息，可選格式化參數。
-     */
-    public static void wtf(@Nullable String message, Object... args) {
-        TREE_OF_SOULS.wtf(message, args);
-    }
-
-    /**
-     * 記錄斷言(assert)級別的異常和訊息，可選格式化參數。
-     */
-    public static void wtf(@Nullable Throwable t, @Nullable String message, Object... args) {
-        TREE_OF_SOULS.wtf(t, message, args);
-    }
-
-    /**
-     * 記錄斷言(assert)級別的異常。
-     */
-    public static void wtf(@Nullable Throwable t) {
-        TREE_OF_SOULS.wtf(t);
-    }
-
-    /**
-     * 日誌上下文類，用於保存日誌相關信息
-     */
-    private static class LogContext {
+    private static class LogEntry {
         final int priority;
         final String tag;
         final String message;
-        final Object[] args;
         final Throwable throwable;
 
-        LogContext(int priority, String tag, String message, Throwable throwable, Object[] args) {
+        LogEntry(int priority, String tag, String message, Throwable throwable) {
             this.priority = priority;
             this.tag = tag;
-            this.message = message != null ? message : "";
+            this.message = message;
             this.throwable = throwable;
-            this.args = args;
         }
     }
 
     /**
-     * 處理日誌呼叫的外觀模式。通過 {@link #plant} 安裝實例。
+     * A facade for handling logging calls. Install instances via {@link #plant}.
      */
-    public abstract static class Tree {
+    public static abstract class Tree {
+        private final ThreadLocal<String> explicitTag = new ThreadLocal<>();
+
+        @Nullable
+        String getTag() {
+            String tag = explicitTag.get();
+            if (tag != null) {
+                explicitTag.remove();
+            }
+            return tag;
+        }
 
         /**
-         * 記錄詳細(verbose)級別的訊息，可選格式化參數。
+         * Log a verbose message with optional format args.
          */
         public void v(@Nullable String message, Object... args) {
             prepareLog(Log.VERBOSE, null, message, args);
         }
 
         /**
-         * 記錄詳細(verbose)級別的異常和訊息，可選格式化參數。
+         * Log a verbose exception and a message with optional format args.
          */
         public void v(@Nullable Throwable t, @Nullable String message, Object... args) {
             prepareLog(Log.VERBOSE, t, message, args);
         }
 
         /**
-         * 記錄詳細(verbose)級別的異常。
+         * Log a verbose exception.
          */
         public void v(@Nullable Throwable t) {
             prepareLog(Log.VERBOSE, t, null);
         }
 
         /**
-         * 記錄調試(debug)級別的訊息，可選格式化參數。
+         * Log a debug message with optional format args.
          */
         public void d(@Nullable String message, Object... args) {
             prepareLog(Log.DEBUG, null, message, args);
         }
 
         /**
-         * 記錄調試(debug)級別的異常和訊息，可選格式化參數。
+         * Log a debug exception and a message with optional format args.
          */
         public void d(@Nullable Throwable t, @Nullable String message, Object... args) {
             prepareLog(Log.DEBUG, t, message, args);
         }
 
         /**
-         * 記錄調試(debug)級別的異常。
+         * Log a debug exception.
          */
         public void d(@Nullable Throwable t) {
             prepareLog(Log.DEBUG, t, null);
         }
 
         /**
-         * 記錄資訊(info)級別的訊息，可選格式化參數。
+         * Log an info message with optional format args.
          */
         public void i(@Nullable String message, Object... args) {
             prepareLog(Log.INFO, null, message, args);
         }
 
         /**
-         * 記錄資訊(info)級別的異常和訊息，可選格式化參數。
+         * Log an info exception and a message with optional format args.
          */
         public void i(@Nullable Throwable t, @Nullable String message, Object... args) {
             prepareLog(Log.INFO, t, message, args);
         }
 
         /**
-         * 記錄資訊(info)級別的異常。
+         * Log an info exception.
          */
         public void i(@Nullable Throwable t) {
             prepareLog(Log.INFO, t, null);
         }
 
         /**
-         * 記錄警告(warning)級別的訊息，可選格式化參數。
+         * Log a warning message with optional format args.
          */
         public void w(@Nullable String message, Object... args) {
             prepareLog(Log.WARN, null, message, args);
         }
 
         /**
-         * 記錄警告(warning)級別的異常和訊息，可選格式化參數。
+         * Log a warning exception and a message with optional format args.
          */
         public void w(@Nullable Throwable t, @Nullable String message, Object... args) {
             prepareLog(Log.WARN, t, message, args);
         }
 
         /**
-         * 記錄警告(warning)級別的異常。
+         * Log a warning exception.
          */
         public void w(@Nullable Throwable t) {
             prepareLog(Log.WARN, t, null);
         }
 
         /**
-         * 記錄錯誤(error)級別的訊息，可選格式化參數。
+         * Log an error message with optional format args.
          */
         public void e(@Nullable String message, Object... args) {
             prepareLog(Log.ERROR, null, message, args);
         }
 
         /**
-         * 記錄錯誤(error)級別的異常和訊息，可選格式化參數。
+         * Log an error exception and a message with optional format args.
          */
         public void e(@Nullable Throwable t, @Nullable String message, Object... args) {
             prepareLog(Log.ERROR, t, message, args);
         }
 
         /**
-         * 記錄錯誤(error)級別的異常。
+         * Log an error exception.
          */
         public void e(@Nullable Throwable t) {
             prepareLog(Log.ERROR, t, null);
         }
 
         /**
-         * 記錄斷言(assert)級別的訊息，可選格式化參數。
+         * Log an assert message with optional format args.
          */
         public void wtf(@Nullable String message, Object... args) {
             prepareLog(Log.ASSERT, null, message, args);
         }
 
         /**
-         * 記錄斷言(assert)級別的異常和訊息，可選格式化參數。
+         * Log an assert exception and a message with optional format args.
          */
         public void wtf(@Nullable Throwable t, @Nullable String message, Object... args) {
             prepareLog(Log.ASSERT, t, message, args);
         }
 
         /**
-         * 記錄斷言(assert)級別的異常。
+         * Log an assert exception.
          */
         public void wtf(@Nullable Throwable t) {
             prepareLog(Log.ASSERT, t, null);
         }
 
         /**
-         * 返回指定優先級和標籤的訊息是否應該被記錄。
+         * Log at {@code priority} a message with optional format args.
          */
-        protected boolean isLoggable(@Nullable String tag, int priority) {
+        public void log(int priority, @Nullable String message, Object... args) {
+            prepareLog(priority, null, message, args);
+        }
+
+        /**
+         * Log at {@code priority} an exception and a message with optional format args.
+         */
+        public void log(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
+            prepareLog(priority, t, message, args);
+        }
+
+        /**
+         * Log at {@code priority} an exception.
+         */
+        public void log(int priority, @Nullable Throwable t) {
+            prepareLog(priority, t, null);
+        }
+
+        /**
+         * Return whether a message at {@code priority} should be logged.
+         *
+         * @deprecated Use {@link #isLoggable(String, int)} instead.
+         */
+        @Deprecated
+        protected boolean isLoggable(int priority) {
             return true;
         }
 
-        // 準備日誌訊息，處理格式化和異常
+        /**
+         * Return whether a message at {@code priority} or {@code tag} should be logged.
+         */
+        protected boolean isLoggable(@Nullable String tag, int priority) {
+            return isLoggable(priority);
+        }
+
         private void prepareLog(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
-            // 獲取標籤
+            // 自動獲取 tag
             String tag = getTag();
+            if (tag == null) {
+                tag = createStackElementTag();
+            }
 
             if (!isLoggable(tag, priority)) {
                 return;
             }
 
-            // 處理消息
-            String formattedMessage = message;
-            if (message != null && args.length > 0) {
-                try {
-                    formattedMessage = String.format(message, args);
-                } catch (Exception e) {
-                    formattedMessage = message + " (格式化失敗)";
+            if (message == null || message.isEmpty()) {
+                if (t == null) {
+                    return; // Swallow message if it's null and there's no throwable.
+                }
+                message = getStackTraceString(t);
+            } else {
+                if (args != null && args.length > 0) {
+                    message = formatMessage(message, args);
+                }
+                if (t != null) {
+                    message += "\n" + getStackTraceString(t);
                 }
             }
 
-            // 處理異常
-            if (t != null) {
-                if (formattedMessage == null || formattedMessage.isEmpty()) {
-                    formattedMessage = Log.getStackTraceString(t);
-                } else {
-                    formattedMessage += "\n" + Log.getStackTraceString(t);
-                }
-            }
-
-            // 如果消息為空，則不記錄
-            if (formattedMessage == null || formattedMessage.isEmpty()) {
-                return;
-            }
-
-            // 記錄日誌
-            log(priority, tag, formattedMessage, t);
-        }
-
-        // 獲取標籤的方法
-        @Nullable
-        private String getTag() {
-            // 優先使用顯式設置的標籤
-            String tag = TagHolder.tag;
-            if (tag != null) {
-                TagHolder.tag = null; // 清除標籤，因為它是一次性的
-                return tag;
-            }
-
-            // 否則嘗試從調用堆疊推斷標籤
-            return createStackElementTag();
-        }
-
-        // 從堆疊推斷標籤
-        @Nullable
-        private String createStackElementTag() {
-            StackTraceElement[] stackTrace = new Throwable().getStackTrace();
-            List<String> fqcnIgnore = Arrays.asList(
-                    Timber.class.getName(),
-                    Tree.class.getName(),
-                    DebugTree.class.getName()
-            );
-
-            for (StackTraceElement element : stackTrace) {
-                String className = element.getClassName();
-                if (!fqcnIgnore.contains(className)) {
-                    return createTagFromStackElement(element);
-                }
-            }
-            return null;
-        }
-
-        // 從堆疊元素創建標籤
-        @Nullable
-        protected String createTagFromStackElement(StackTraceElement element) {
-            String tag = element.getClassName();
-            tag = tag.substring(tag.lastIndexOf('.') + 1);
-
-            // 處理匿名類和內部類
-            Pattern anonymousClassPattern = Pattern.compile("(\\$\\d+)+$");
-            if (anonymousClassPattern.matcher(tag).find()) {
-                tag = anonymousClassPattern.matcher(tag).replaceAll("");
-            }
-
-            // 處理標籤長度限制
-            if (tag.length() > MAX_TAG_LENGTH && Build.VERSION.SDK_INT < 26) {
-                tag = tag.substring(0, MAX_TAG_LENGTH);
-            }
-
-            return tag;
+            // 將日誌訊息推送到 processor
+            logProcessor.onNext(new LogEntry(priority, tag, message, t));
         }
 
         /**
-         * 將日誌訊息寫入目的地。
+         * Formats a log message with optional arguments.
          */
-        protected abstract void log(int priority, @Nullable String tag, String message, @Nullable Throwable t);
+        protected String formatMessage(@NotNull String message, @NotNull Object[] args) {
+            return String.format(message, args);
+        }
+
+        private String getStackTraceString(Throwable t) {
+            // Don't replace this with Log.getStackTraceString() - it hides
+            // UnknownHostException, which is not what we want.
+            StringWriter sw = new StringWriter(256);
+            PrintWriter pw = new PrintWriter(sw, false);
+            t.printStackTrace(pw);
+            pw.flush();
+            return sw.toString();
+        }
+
+        /**
+         * Write a log message to its destination. Called for all level-specific methods by default.
+         *
+         * @param priority Log level. See {@link Log} for constants.
+         * @param tag      Explicit or inferred tag. May be {@code null}.
+         * @param message  Formatted log message.
+         * @param t        Accompanying exceptions. May be {@code null}.
+         */
+        protected abstract void log(int priority, @Nullable String tag, @NotNull String message, @Nullable Throwable t);
     }
 
     /**
-     * 用於調試構建的 {@link Tree}。使用 Android 的 Log 類記錄日誌。
+     * A {@link Tree} for debug builds. Automatically infers the tag from the calling class.
      */
     public static class DebugTree extends Tree {
-        @Override
-        protected void log(int priority, @Nullable String tag, String message, @Nullable Throwable t) {
-            String finalTag = tag != null ? tag : "Timber";
+        private static final int MAX_LOG_LENGTH = 4000;
 
-            if (message.length() < MAX_LOG_LENGTH) {
+        /**
+         * Break up {@code message} into maximum-length chunks (if needed) and send to either
+         * {@link Log#println(int, String, String) Log.println()} or
+         * {@link Log#wtf(String, String) Log.wtf()} for logging.
+         */
+        @Override
+        protected void log(int priority, @Nullable String tag, @NotNull String message, @Nullable Throwable t) {
+            if (message.length() <= MAX_LOG_LENGTH) {
                 if (priority == Log.ASSERT) {
-                    Log.wtf(finalTag, message);
+                    Log.wtf(tag, message);
                 } else {
-                    Log.println(priority, finalTag, message);
+                    Log.println(priority, tag, message);
                 }
                 return;
             }
 
-            // 處理長消息
-            int i = 0;
-            int length = message.length();
-            while (i < length) {
+            // Split by line, then ensure each line can fit into Log's maximum length.
+            for (int i = 0, length = message.length(); i < length; i++) {
                 int newline = message.indexOf('\n', i);
                 newline = newline != -1 ? newline : length;
                 do {
                     int end = Math.min(newline, i + MAX_LOG_LENGTH);
                     String part = message.substring(i, end);
                     if (priority == Log.ASSERT) {
-                        Log.wtf(finalTag, part);
+                        Log.wtf(tag, part);
                     } else {
-                        Log.println(priority, finalTag, part);
+                        Log.println(priority, tag, part);
                     }
                     i = end;
                 } while (i < newline);
@@ -605,145 +360,672 @@ public final class Timber {
     }
 
     /**
-     * 應用程序生命週期觀察者，使用 ProcessLifecycleOwner
+     * Extract the tag which should be used for the message from the {@code element}.
      */
-    public static class ApplicationLifecycleObserver implements DefaultLifecycleObserver {
-
-        public ApplicationLifecycleObserver() {
-            // 註冊為生命週期觀察者
-            ProcessLifecycleOwner.get().getLifecycle().addObserver(this);
+    @Nullable
+    private static String createStackElementTag() {
+        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+        if (stackTrace.length <= 2) {
+            return null;
         }
 
-        @Override
-        public void onCreate(LifecycleOwner owner) {
-            Timber.tag("TimberLifecycle").d("應用程序已創建");
+        // 尋找第一個非 Timber 類的調用者
+        for (int i = 2; i < stackTrace.length; i++) {
+            String className = stackTrace[i].getClassName();
+            if (!TIMBER_CLASSES.contains(className)) {
+                String tag = className.substring(className.lastIndexOf('.') + 1);
+                Matcher m = ANONYMOUS_CLASS.matcher(tag);
+                if (m.find()) {
+                    tag = m.replaceAll("");
+                }
+                // Tag length limit was removed in API 26.
+                if (tag.length() <= MAX_TAG_LENGTH || Build.VERSION.SDK_INT >= 26) {
+                    return tag;
+                } else {
+                    return tag.substring(0, MAX_TAG_LENGTH);
+                }
+            }
         }
 
-        @Override
-        public void onStart(LifecycleOwner owner) {
-            Timber.tag("TimberLifecycle").d("應用程序已啟動（前台）");
-        }
+        return null;
+    }
 
-        @Override
-        public void onResume(LifecycleOwner owner) {
-            Timber.tag("TimberLifecycle").d("應用程序已恢復（可見）");
-        }
+    /**
+     * 清理所有訂閱
+     */
+    public static void clearDisposables() {
+        disposables.clear();
 
-        @Override
-        public void onPause(LifecycleOwner owner) {
-            Timber.tag("TimberLifecycle").d("應用程序已暫停");
-        }
+        // 重新初始化處理流程
+        disposables.add(
+                logProcessor
+                        .onBackpressureBuffer()
+                        .flatMap(logEntry -> {
+                            List<Tree> trees = Forest.forest();
+                            return Flowable.fromIterable(trees)
+                                    .parallel()
+                                    .runOn(Schedulers.io())
+                                    .map(tree -> {
+                                        if (tree.isLoggable(logEntry.tag, logEntry.priority)) {
+                                            tree.log(logEntry.priority, logEntry.tag, logEntry.message, logEntry.throwable);
+                                        }
+                                        return tree;
+                                    })
+                                    .sequential();
+                        })
+                        .subscribe()
+        );
+    }
 
-        @Override
-        public void onStop(LifecycleOwner owner) {
-            Timber.tag("TimberLifecycle").d("應用程序已停止（後台）");
-            // 當應用進入後台時，清理部分資源
-            cleanupBackgroundDisposables();
-        }
+    /**
+     * Global static methods.
+     */
+    public static final class Forest {
 
-        @Override
-        public void onDestroy(LifecycleOwner owner) {
-            Timber.tag("TimberLifecycle").d("應用程序已銷毀");
-            // 清理所有資源
-            DISPOSABLES.clear();
+        private Forest() {
+            throw new AssertionError("No instances.");
         }
 
         /**
-         * 清理後台運行時不需要的 Disposable
+         * A thread-safe list of all planted trees.
          */
-        private void cleanupBackgroundDisposables() {
-            // 這裡可以實現更細緻的清理邏輯
-            Timber.tag("TimberLifecycle").d("應用進入後台，清理部分 Disposable");
+        private static final CopyOnWriteArrayList<Tree> FOREST = new CopyOnWriteArrayList<>();
+
+        /**
+         * Log a verbose message with optional format args.
+         */
+        public static void v(@Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), null));
         }
 
         /**
-         * 解除觀察者註冊
+         * Log a verbose exception and a message with optional format args.
          */
-        public void unregister() {
-            ProcessLifecycleOwner.get().getLifecycle().removeObserver(this);
+        public static void v(@Nullable Throwable t, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * Log a verbose exception.
+         */
+        public static void v(@Nullable Throwable t) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.VERBOSE, tag, null, t));
+        }
+
+        /**
+         * Log a debug message with optional format args.
+         */
+        public static void d(@Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * Log a debug exception and a message with optional format args.
+         */
+        public static void d(@Nullable Throwable t, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * Log a debug exception.
+         */
+        public static void d(@Nullable Throwable t) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.DEBUG, tag, null, t));
+        }
+
+        /**
+         * Log an info message with optional format args.
+         */
+        public static void i(@Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.INFO, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * Log an info exception and a message with optional format args.
+         */
+        public static void i(@Nullable Throwable t, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.INFO, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * Log an info exception.
+         */
+        public static void i(@Nullable Throwable t) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.INFO, tag, null, t));
+        }
+
+        /**
+         * Log a warning message with optional format args.
+         */
+        public static void w(@Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.WARN, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * Log a warning exception and a message with optional format args.
+         */
+        public static void w(@Nullable Throwable t, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.WARN, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * Log a warning exception.
+         */
+        public static void w(@Nullable Throwable t) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.WARN, tag, null, t));
+        }
+
+        /**
+         * Log an error message with optional format args.
+         */
+        public static void e(@Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.ERROR, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * Log an error exception and a message with optional format args.
+         */
+        public static void e(@Nullable Throwable t, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.ERROR, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * Log an error exception.
+         */
+        public static void e(@Nullable Throwable t) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.ERROR, tag, null, t));
+        }
+
+        /**
+         * Log an assert message with optional format args.
+         */
+        public static void wtf(@Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * Log an assert exception and a message with optional format args.
+         */
+        public static void wtf(@Nullable Throwable t, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * Log an assert exception.
+         */
+        public static void wtf(@Nullable Throwable t) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(Log.ASSERT, tag, null, t));
+        }
+
+        /**
+         * Log at {@code priority} a message with optional format args.
+         */
+        public static void log(int priority, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(priority, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * Log at {@code priority} an exception and a message with optional format args.
+         */
+        public static void log(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(priority, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * Log at {@code priority} an exception.
+         */
+        public static void log(int priority, @Nullable Throwable t) {
+            String tag = createStackElementTag();
+            logProcessor.onNext(new LogEntry(priority, tag, null, t));
+        }
+
+        private static String formatArgs(@Nullable String message, Object... args) {
+            if (message == null || message.isEmpty() || args == null || args.length == 0) {
+                return message;
+            }
+            return String.format(message, args);
+        }
+
+        /**
+         * Set a one-time tag for use on the next logging call.
+         */
+        public static TaggedTree tag(String tag) {
+            return new TaggedTree(tag);
+        }
+
+        /**
+         * Add a new logging tree.
+         */
+        public static void plant(Tree tree) {
+            if (tree == null) {
+                throw new NullPointerException("tree == null");
+            }
+            FOREST.add(tree);
+        }
+
+        /**
+         * Adds new logging trees.
+         */
+        public static void plant(Tree... trees) {
+            if (trees == null) {
+                throw new NullPointerException("trees == null");
+            }
+            for (Tree tree : trees) {
+                if (tree == null) {
+                    throw new NullPointerException("trees contains null");
+                }
+                FOREST.add(tree);
+            }
+        }
+
+        /**
+         * Remove a planted tree.
+         */
+        public static void uproot(Tree tree) {
+            if (tree == null) {
+                throw new NullPointerException("tree == null");
+            }
+            if (!FOREST.remove(tree)) {
+                throw new IllegalArgumentException("Cannot uproot tree which is not planted: " + tree);
+            }
+        }
+
+        /**
+         * Remove all planted trees.
+         */
+        public static void uprootAll() {
+            FOREST.clear();
+        }
+
+        /**
+         * Return a copy of all planted {@linkplain Tree trees}.
+         */
+        @NotNull
+        public static List<Tree> forest() {
+            return Collections.unmodifiableList(new ArrayList<>(FOREST));
+        }
+
+        /**
+         * Return an array of all planted {@linkplain Tree trees}.
+         */
+        @NotNull
+        static Tree[] forestAsArray() {
+            return FOREST.toArray(new Tree[0]);
+        }
+
+        /**
+         * Get the number of planted trees.
+         */
+        public static int treeCount() {
+            return FOREST.size();
+        }
+    }
+
+    // 在 Timber 類中添加一個新的 TaggedTree 類
+    public static class TaggedTree {
+        private final String tag;
+
+        TaggedTree(String tag) {
+            this.tag = tag;
+        }
+
+        /**
+         * 記錄帶標籤的 VERBOSE 級別消息
+         */
+        public void v(@Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * 記錄帶標籤的 VERBOSE 級別異常和消息
+         */
+        public void v(@Nullable Throwable t, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * 記錄帶標籤的 VERBOSE 級別異常
+         */
+        public void v(@Nullable Throwable t) {
+            logProcessor.onNext(new LogEntry(Log.VERBOSE, tag, null, t));
+        }
+
+        /**
+         * 記錄帶標籤的 DEBUG 級別消息
+         */
+        public void d(@Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * 記錄帶標籤的 DEBUG 級別異常和消息
+         */
+        public void d(@Nullable Throwable t, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * 記錄帶標籤的 DEBUG 級別異常
+         */
+        public void d(@Nullable Throwable t) {
+            logProcessor.onNext(new LogEntry(Log.DEBUG, tag, null, t));
+        }
+
+        /**
+         * 記錄帶標籤的 INFO 級別消息
+         */
+        public void i(@Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.INFO, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * 記錄帶標籤的 INFO 級別異常和消息
+         */
+        public void i(@Nullable Throwable t, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.INFO, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * 記錄帶標籤的 INFO 級別異常
+         */
+        public void i(@Nullable Throwable t) {
+            logProcessor.onNext(new LogEntry(Log.INFO, tag, null, t));
+        }
+
+        /**
+         * 記錄帶標籤的 WARNING 級別消息
+         */
+        public void w(@Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.WARN, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * 記錄帶標籤的 WARNING 級別異常和消息
+         */
+        public void w(@Nullable Throwable t, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.WARN, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * 記錄帶標籤的 WARNING 級別異常
+         */
+        public void w(@Nullable Throwable t) {
+            logProcessor.onNext(new LogEntry(Log.WARN, tag, null, t));
+        }
+
+        /**
+         * 記錄帶標籤的 ERROR 級別消息
+         */
+        public void e(@Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.ERROR, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * 記錄帶標籤的 ERROR 級別異常和消息
+         */
+        public void e(@Nullable Throwable t, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.ERROR, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * 記錄帶標籤的 ERROR 級別異常
+         */
+        public void e(@Nullable Throwable t) {
+            logProcessor.onNext(new LogEntry(Log.ERROR, tag, null, t));
+        }
+
+        /**
+         * 記錄帶標籤的 ASSERT 級別消息
+         */
+        public void wtf(@Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * 記錄帶標籤的 ASSERT 級別異常和消息
+         */
+        public void wtf(@Nullable Throwable t, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * 記錄帶標籤的 ASSERT 級別異常
+         */
+        public void wtf(@Nullable Throwable t) {
+            logProcessor.onNext(new LogEntry(Log.ASSERT, tag, null, t));
+        }
+
+        /**
+         * 記錄帶標籤的指定優先級消息
+         */
+        public void log(int priority, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(priority, tag, formatArgs(message, args), null));
+        }
+
+        /**
+         * 記錄帶標籤的指定優先級異常和消息
+         */
+        public void log(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
+            logProcessor.onNext(new LogEntry(priority, tag, formatArgs(message, args), t));
+        }
+
+        /**
+         * 記錄帶標籤的指定優先級異常
+         */
+        public void log(int priority, @Nullable Throwable t) {
+            logProcessor.onNext(new LogEntry(priority, tag, null, t));
+        }
+
+        private String formatArgs(@Nullable String message, Object... args) {
+            if (message == null || message.isEmpty() || args == null || args.length == 0) {
+                return message;
+            }
+            return String.format(message, args);
         }
     }
 
 
-    // 靈魂之樹 - 所有日誌調用的入口點
-    private static final Tree TREE_OF_SOULS = new Tree() {
-        @Override
-        protected void log(int priority, @Nullable String tag, String message, @Nullable Throwable t) {
-            // 獲取所有已植入的樹
-            List<Tree> forest = FOREST;
-            if (forest.isEmpty()) {
-                return;
-            }
+    // 在 Timber 類中添加以下靜態方法
 
-            // 使用 RxJava 將日誌分發給所有樹
-            final String finalTag = tag;
-            final String finalMessage = message;
-            final Throwable finalT = t;
+    /**
+     * 植入一個新的日誌樹
+     */
+    public static void plant(Tree tree) {
+        Forest.plant(tree);
+    }
 
-            Disposable disposable = Flowable.fromIterable(forest)
-                    .subscribeOn(Schedulers.io())
-                    .doOnNext(tree -> {
-                        // 為每棵樹設置標籤
-                        if (finalTag != null) {
-                            TagHolder.tag = finalTag;
-                        }
+    /**
+     * 植入多個日誌樹
+     */
+    public static void plant(Tree... trees) {
+        Forest.plant(trees);
+    }
 
-                        // 根據優先級調用相應的日誌方法
-                        switch (priority) {
-                            case Log.VERBOSE:
-                                if (finalT != null) {
-                                    tree.v(finalT, finalMessage);
-                                } else {
-                                    tree.v(finalMessage);
-                                }
-                                break;
-                            case Log.DEBUG:
-                                if (finalT != null) {
-                                    tree.d(finalT, finalMessage);
-                                } else {
-                                    tree.d(finalMessage);
-                                }
-                                break;
-                            case Log.INFO:
-                                if (finalT != null) {
-                                    tree.i(finalT, finalMessage);
-                                } else {
-                                    tree.i(finalMessage);
-                                }
-                                break;
-                            case Log.WARN:
-                                if (finalT != null) {
-                                    tree.w(finalT, finalMessage);
-                                } else {
-                                    tree.w(finalMessage);
-                                }
-                                break;
-                            case Log.ERROR:
-                                if (finalT != null) {
-                                    tree.e(finalT, finalMessage);
-                                } else {
-                                    tree.e(finalMessage);
-                                }
-                                break;
-                            case Log.ASSERT:
-                                if (finalT != null) {
-                                    tree.wtf(finalT, finalMessage);
-                                } else {
-                                    tree.wtf(finalMessage);
-                                }
-                                break;
-                        }
-                    })
-                    .doOnError(throwable -> System.err.println("Timber error: " + throwable.getMessage()))
-                    .onErrorResumeNext(throwable -> Flowable.empty())
-                    .subscribe();
+    /**
+     * 移除一個已植入的日誌樹
+     */
+    public static void uproot(Tree tree) {
+        Forest.uproot(tree);
+    }
 
-            // 將訂閱添加到 CompositeDisposable
-            DISPOSABLES.add(disposable);
-        }
-    };
+    /**
+     * 移除所有已植入的日誌樹
+     */
+    public static void uprootAll() {
+        Forest.uprootAll();
+    }
 
-    // 常量
-    private static final int MAX_LOG_LENGTH = 4000;  // Android 日誌的最大長度限制
-    private static final int MAX_TAG_LENGTH = 23;    // 標籤的最大長度限制
+    /**
+     * 設置一次性標籤用於下一次日誌調用
+     */
+    public static TaggedTree tag(String tag) {
+        return new TaggedTree(tag);
+    }
+
+    /**
+     * 記錄 VERBOSE 級別的消息
+     */
+    public static void v(@Nullable String message, Object... args) {
+        Forest.v(message, args);
+    }
+
+    /**
+     * 記錄 VERBOSE 級別的異常和消息
+     */
+    public static void v(@Nullable Throwable t, @Nullable String message, Object... args) {
+        Forest.v(t, message, args);
+    }
+
+    /**
+     * 記錄 VERBOSE 級別的異常
+     */
+    public static void v(@Nullable Throwable t) {
+        Forest.v(t);
+    }
+
+    /**
+     * 記錄 DEBUG 級別的消息
+     */
+    public static void d(@Nullable String message, Object... args) {
+        Forest.d(message, args);
+    }
+
+    /**
+     * 記錄 DEBUG 級別的異常和消息
+     */
+    public static void d(@Nullable Throwable t, @Nullable String message, Object... args) {
+        Forest.d(t, message, args);
+    }
+
+    /**
+     * 記錄 DEBUG 級別的異常
+     */
+    public static void d(@Nullable Throwable t) {
+        Forest.d(t);
+    }
+
+    /**
+     * 記錄 INFO 級別的消息
+     */
+    public static void i(@Nullable String message, Object... args) {
+        Forest.i(message, args);
+    }
+
+    /**
+     * 記錄 INFO 級別的異常和消息
+     */
+    public static void i(@Nullable Throwable t, @Nullable String message, Object... args) {
+        Forest.i(t, message, args);
+    }
+
+    /**
+     * 記錄 INFO 級別的異常
+     */
+    public static void i(@Nullable Throwable t) {
+        Forest.i(t);
+    }
+
+    /**
+     * 記錄 WARNING 級別的消息
+     */
+    public static void w(@Nullable String message, Object... args) {
+        Forest.w(message, args);
+    }
+
+    /**
+     * 記錄 WARNING 級別的異常和消息
+     */
+    public static void w(@Nullable Throwable t, @Nullable String message, Object... args) {
+        Forest.w(t, message, args);
+    }
+
+    /**
+     * 記錄 WARNING 級別的異常
+     */
+    public static void w(@Nullable Throwable t) {
+        Forest.w(t);
+    }
+
+    /**
+     * 記錄 ERROR 級別的消息
+     */
+    public static void e(@Nullable String message, Object... args) {
+        Forest.e(message, args);
+    }
+
+    /**
+     * 記錄 ERROR 級別的異常和消息
+     */
+    public static void e(@Nullable Throwable t, @Nullable String message, Object... args) {
+        Forest.e(t, message, args);
+    }
+
+    /**
+     * 記錄 ERROR 級別的異常
+     */
+    public static void e(@Nullable Throwable t) {
+        Forest.e(t);
+    }
+
+    /**
+     * 記錄 ASSERT 級別的消息
+     */
+    public static void wtf(@Nullable String message, Object... args) {
+        Forest.wtf(message, args);
+    }
+
+    /**
+     * 記錄 ASSERT 級別的異常和消息
+     */
+    public static void wtf(@Nullable Throwable t, @Nullable String message, Object... args) {
+        Forest.wtf(t, message, args);
+    }
+
+    /**
+     * 記錄 ASSERT 級別的異常
+     */
+    public static void wtf(@Nullable Throwable t) {
+        Forest.wtf(t);
+    }
+
+    /**
+     * 記錄指定優先級的消息
+     */
+    public static void log(int priority, @Nullable String message, Object... args) {
+        Forest.log(priority, message, args);
+    }
+
+    /**
+     * 記錄指定優先級的異常和消息
+     */
+    public static void log(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
+        Forest.log(priority, t, message, args);
+    }
+
+    /**
+     * 記錄指定優先級的異常
+     */
+    public static void log(int priority, @Nullable Throwable t) {
+        Forest.log(priority, t);
+    }
 }
