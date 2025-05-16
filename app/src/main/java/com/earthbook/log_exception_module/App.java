@@ -2,6 +2,9 @@ package com.earthbook.log_exception_module;
 
 import android.app.Application;
 
+import com.earthbook.log_exception_module.log.DebugTree;
+import com.earthbook.log_exception_module.log.Timber;
+
 public class App extends Application {
 
     @Override
@@ -9,7 +12,7 @@ public class App extends Application {
         super.onCreate();
 
         // 植入調試樹
-        Timber.plant(new Timber.DebugTree());
+        Timber.plant(new DebugTree());
 
         Timber.d("應用程序已啟動");
     }

@@ -3,7 +3,6 @@ package com.earthbook.log_exception_module;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -12,6 +11,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import com.earthbook.log_exception_module.log.Timber;
+import com.earthbook.log_exception_module.log.Tree;
 
 import java.util.concurrent.TimeUnit;
 
@@ -122,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnTestMultipleTree = findViewById(R.id.btnTestMultipleTree);
         btnTestMultipleTree.setOnClickListener(v -> {
             // 創建自定義樹
-            Timber.Tree customTree = new Timber.Tree() {
+            Tree customTree = new Tree() {
                 @Override
                 protected void log(int priority, String tag, String message, Throwable t) {
                     // 將日誌輸出到 Toast

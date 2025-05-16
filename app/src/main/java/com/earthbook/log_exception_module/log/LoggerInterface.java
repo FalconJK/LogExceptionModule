@@ -1,4 +1,4 @@
-package com.earthbook.log_exception_module;
+package com.earthbook.log_exception_module.log;
 
 import androidx.annotation.Nullable;
 
