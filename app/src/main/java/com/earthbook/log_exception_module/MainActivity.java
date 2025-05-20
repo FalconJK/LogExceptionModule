@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
@@ -41,9 +42,12 @@ public class MainActivity extends AppCompatActivity {
         });
         ScrollView scrollView = findViewById(R.id.scrollView);
         TextView textView = findViewById(R.id.textview);
-        textView.setText(android.os.Process.myUid() + "");
+        textView.append("myUid: " + android.os.Process.myUid());
+        textView.append("GIT_SHA: " + BuildConfig.GIT_SHA);
+        textView.append("BUILD_TIME: " + BuildConfig.BUILD_TIME);
         LogcatSession logcatSession = new LogcatSession(Arrays.asList("main"));
         // 訂閱狀態流
+        logcatSession.clearLogs();
         Disposable startLogcat = logcatSession.start()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
@@ -66,12 +70,13 @@ public class MainActivity extends AppCompatActivity {
                 );
         disposables.add(disposable);
 
-        Disposable disposable3 = Observable.interval(100, TimeUnit.MILLISECONDS)
+        Disposable disposable3 = Flowable.interval(10, TimeUnit.MILLISECONDS)
                 .subscribeOn(Schedulers.io())
+                .onBackpressureDrop()
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                         aLong -> {
-                            Timber.d(aLong.toString());
+                            Timber.tag("1").d(aLong.toString());
                         },
                         throwable -> System.err.println("Error receiving logs: " + throwable.getMessage())
                 );
