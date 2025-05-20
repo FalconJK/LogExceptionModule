@@ -2,6 +2,11 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
 }
+apply(from = "version-info.gradle.kts")
+
+// 獲取函數引用
+val getGitSha: () -> String by extra
+val getBuildTime: () -> String by extra
 
 android {
     namespace = "com.earthbook.log_exception_module"
@@ -15,6 +20,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 直接在這裡使用函數
+        buildConfigField("String", "GIT_SHA", "\"${getGitSha()}\"")
+        buildConfigField("String", "BUILD_TIME", "\"${getBuildTime()}\"")
     }
 
     buildTypes {
@@ -33,10 +42,13 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
+    }
 }
 
 dependencies {
-
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -44,10 +56,10 @@ dependencies {
     implementation(libs.rxandroid)
     implementation(libs.rxjava)
     implementation(libs.core.ktx)
-//    implementation ("com.jakewharton.timber:timber:5.0.1")
-    debugImplementation (libs.leakcanary.android)
-    implementation ("androidx.lifecycle:lifecycle-process:2.7.0")
-    implementation ("androidx.lifecycle:lifecycle-runtime:2.7.0")
+//    implementation("com.jakewharton.timber:timber:5.0.1")
+    debugImplementation(libs.leakcanary.android)
+    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime:2.7.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
