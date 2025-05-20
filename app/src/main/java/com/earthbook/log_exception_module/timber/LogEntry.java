@@ -1,4 +1,4 @@
-package com.earthbook.log_exception_module.log;
+package com.earthbook.log_exception_module.timber;
 
 /**
  * 包含所有日誌所需信息的日誌條目

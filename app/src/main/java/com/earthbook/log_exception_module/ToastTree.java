@@ -3,7 +3,7 @@ package com.earthbook.log_exception_module;
 import android.content.Context;
 import android.widget.Toast;
 
-import com.earthbook.log_exception_module.log.Tree;
+import com.earthbook.log_exception_module.timber.Tree;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

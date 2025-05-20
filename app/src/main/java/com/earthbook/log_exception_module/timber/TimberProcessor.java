@@ -1,11 +1,10 @@
-package com.earthbook.log_exception_module.log;
+package com.earthbook.log_exception_module.timber;
 
 import java.util.List;
 
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.processors.PublishProcessor;
-import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /**
  * 處理日誌消息的處理器

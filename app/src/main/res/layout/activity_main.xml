@@ -7,106 +7,14 @@
     tools:context=".MainActivity">
 
     <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <LinearLayout
+        android:layout_height="match_parent"
+        tools:ignore="UselessParent">
+        <TextView
+            android:id="@+id/textview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Timber 功能測試"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="16dp"/>
-
-            <Button
-                android:id="@+id/btnTestDebug"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試 Debug 日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestVerbose"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試 Verbose 日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestInfo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試 Info 日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestWarning"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試 Warning 日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestError"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試 Error 日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestWtf"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試 WTF 日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestException"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試異常日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestCustomTag"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試自定義標籤"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestFormatting"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試格式化日誌"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnTestMultipleTree"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試多樹植入"
-                android:layout_marginBottom="8dp"/>
-
-            <Button
-                android:id="@+id/btnClearDisposables"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="清理所有訂閱"
-                android:layout_marginBottom="8dp"/>
-            <Button
-                android:id="@+id/btnTestAppLifecycle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="測試應用生命週期"
-                android:layout_marginBottom="8dp"/>
-        </LinearLayout>
+            android:text="123"/>
     </ScrollView>
-
 </RelativeLayout>

@@ -1,4 +1,4 @@
-package com.earthbook.log_exception_module.log;
+package com.earthbook.log_exception_module.timber;
 
 import android.util.Log;
 
