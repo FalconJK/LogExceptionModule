@@ -12,6 +12,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.earthbook.log_exception_module.logcat.Log;
 import com.earthbook.log_exception_module.logcat.LogcatSession;
 import com.earthbook.log_exception_module.timber.Timber;
 
@@ -20,7 +21,6 @@ import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -56,18 +56,21 @@ public class MainActivity extends AppCompatActivity {
         disposables.add(startLogcat);
 
         Disposable disposable = logcatSession.getLogs()
-                .subscribeOn(Schedulers.io())
+                .subscribeOn(Schedulers.computation())
+                .map(logs -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (Log log : logs) {
+                        sb.append(log.getTag()).append(" :")
+                                .append(log.getMsg()).append("\n");
+                    }
+                    return sb;
+                })
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                        logs -> {
-                            for (String log : logs) {
-//                        System.out.println(log);
-                                textView.append(log + "\n");
-                            }
+                .subscribe(sb -> {
+                            textView.append(sb);
                             scrollView.fullScroll(View.FOCUS_DOWN);
                         },
-                        throwable -> System.err.println("Error receiving logs: " + throwable.getMessage())
-                );
+                        throwable -> System.err.println("Error receiving logs: " + throwable.getMessage()));
         disposables.add(disposable);
 
         Disposable disposable3 = Flowable.interval(10, TimeUnit.MILLISECONDS)

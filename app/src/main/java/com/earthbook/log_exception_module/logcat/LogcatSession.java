@@ -35,13 +35,14 @@ public class LogcatSession {
         }
     }
 
-    private static final long POLL_INTERVAL = 200L; // 20 milliseconds
+    private static final long POLL_INTERVAL = 200L; // 200 milliseconds
 
     private final List<String> buffers;
     private final AtomicBoolean active = new AtomicBoolean(false);
     private final AtomicBoolean stopped = new AtomicBoolean(false);
 
-    private final PublishProcessor<List<String>> logsProcessor = PublishProcessor.create();
+    // 修改為 Log 物件的處理器
+    private final PublishProcessor<List<Log>> logsProcessor = PublishProcessor.create();
     private final CompositeDisposable disposables = new CompositeDisposable();
 
     private Process logcatProcess;
@@ -102,9 +103,9 @@ public class LogcatSession {
     }
 
     /**
-     * 獲取日誌流
+     * 獲取日誌流 - 現在返回 Log 物件列表
      */
-    public Flowable<List<String>> getLogs() {
+    public Flowable<List<Log>> getLogs() {
         return logsProcessor.onBackpressureBuffer();
     }
 
@@ -256,18 +257,18 @@ public class LogcatSession {
     }
 
     /**
-     * 設置日誌讀取
+     * 設置日誌讀取 - 現在使用 LogcatStreamReader 解析 Log 物件
      */
     private void setupLogReading(Process process) {
-        // 創建一個 Observable 來讀取進程輸出
-        Disposable readerDisposable = Observable.<String>create(emitter -> {
-                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                        String line;
-                        while ((line = reader.readLine()) != null && !emitter.isDisposed()) {
-                            emitter.onNext(line);
+        // 創建一個 Observable 來讀取和解析日誌
+        Disposable readerDisposable = Observable.<Log>create(emitter -> {
+                    try {
+                        LogcatStreamReader reader = new LogcatStreamReader(process.getInputStream());
+                        while (reader.hasNext() && !emitter.isDisposed()) {
+                            emitter.onNext(reader.next());
                         }
                         emitter.onComplete();
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         if (!emitter.isDisposed()) {
                             emitter.onError(e);
                         }
@@ -275,12 +276,12 @@ public class LogcatSession {
                 })
                 .subscribeOn(Schedulers.io())
                 .buffer(POLL_INTERVAL, TimeUnit.MILLISECONDS)
-                .filter(lines -> !lines.isEmpty())
-                .takeWhile(lines -> !stopped.get())
+                .filter(logs -> !logs.isEmpty())
+                .takeWhile(logs -> !stopped.get())
                 .subscribe(
-                        lines -> {
-                            if (!lines.isEmpty()) {
-                                logsProcessor.onNext(lines);
+                        logs -> {
+                            if (!logs.isEmpty()) {
+                                logsProcessor.onNext(logs);
                             }
                         },
                         error -> System.out.println("LogcatSession: error reading logs: " + error.getMessage()),
@@ -310,5 +311,18 @@ public class LogcatSession {
                 );
 
         disposables.add(processWatcherDisposable);
+    }
+
+    /**
+     * 日誌優先級常量
+     */
+    public static class LogPriority {
+        public static final String ASSERT = "A";
+        public static final String DEBUG = "D";
+        public static final String ERROR = "E";
+        public static final String FATAL = "F";
+        public static final String INFO = "I";
+        public static final String VERBOSE = "V";
+        public static final String WARNING = "W";
     }
 }
