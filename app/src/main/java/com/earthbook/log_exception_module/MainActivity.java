@@ -42,6 +42,11 @@ public class MainActivity extends AppCompatActivity {
         });
         ScrollView scrollView = findViewById(R.id.scrollView);
         TextView textView = findViewById(R.id.textview);
+
+        findViewById(R.id.btn_log).setOnClickListener(v -> Timber.d("Hello, World!"));
+        findViewById(R.id.btn_tag).setOnClickListener(v -> Timber.tag("456").d("Hello, World!"));
+
+
         textView.append("myUid: " + android.os.Process.myUid());
         textView.append("GIT_SHA: " + BuildConfig.GIT_SHA);
         textView.append("BUILD_TIME: " + BuildConfig.BUILD_TIME);
@@ -72,18 +77,6 @@ public class MainActivity extends AppCompatActivity {
                         },
                         throwable -> System.err.println("Error receiving logs: " + throwable.getMessage()));
         disposables.add(disposable);
-
-        Disposable disposable3 = Flowable.interval(10, TimeUnit.MILLISECONDS)
-                .subscribeOn(Schedulers.io())
-                .onBackpressureDrop()
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(
-                        aLong -> {
-                            Timber.tag("1").d(aLong.toString());
-                        },
-                        throwable -> System.err.println("Error receiving logs: " + throwable.getMessage())
-                );
-        disposables.add(disposable3);
     }
 
 

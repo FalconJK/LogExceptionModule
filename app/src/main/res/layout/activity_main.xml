@@ -6,10 +6,23 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <Button
+        android:id="@+id/btn_log"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="normal"/>
+    <Button
+        android:id="@+id/btn_tag"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="custom tag"
+        android:layout_toEndOf="@+id/btn_log" />
+
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_below="@id/btn_log"
         tools:ignore="UselessParent">
         <TextView
             android:id="@+id/textview"

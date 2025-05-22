@@ -264,12 +264,35 @@ public class LogcatSession {
         Disposable readerDisposable = Observable.<Log>create(emitter -> {
                     try {
                         LogcatStreamReader reader = new LogcatStreamReader(process.getInputStream());
-                        while (reader.hasNext() && !emitter.isDisposed()) {
-                            emitter.onNext(reader.next());
+
+                        // 使用無限循環，只有當 emitter 被處置時才會退出
+                        while (!emitter.isDisposed()) {
+                            try {
+                                // 檢查是否有新日誌，但不要無限阻塞
+                                if (reader.hasNext()) {
+                                    emitter.onNext(reader.next());
+                                } else {
+                                    // 如果沒有新日誌，短暫休眠以避免 CPU 使用率過高
+                                    Thread.sleep(50);
+                                }
+                            } catch (InterruptedException ie) {
+                                // 處理中斷異常
+                                Thread.currentThread().interrupt();
+                                break;
+                            } catch (Exception e) {
+                                // 記錄其他異常但繼續運行
+                                System.out.println("LogcatSession: error reading log entry: " + e.getMessage());
+                                // 短暫休眠以避免在出錯情況下的快速循環
+                                Thread.sleep(100);
+                            }
                         }
-                        emitter.onComplete();
+
+                        // 不要在這裡調用 onComplete，讓 Observable 保持活躍直到被明確處置
+                        // emitter.onComplete();
                     } catch (Exception e) {
                         if (!emitter.isDisposed()) {
+                            // 只有在嚴重錯誤時才結束 Observable
+                            System.out.println("LogcatSession: critical error in log reader: " + e.getMessage());
                             emitter.onError(e);
                         }
                     }
@@ -305,6 +328,7 @@ public class LogcatSession {
                         completed -> {
                             if (completed && !stopped.get()) {
                                 System.out.println("LogcatSession: logcat process terminated unexpectedly");
+                                // 可以考慮在這裡重啟 logcat 進程
                             }
                         },
                         error -> System.out.println("LogcatSession: error waiting for process: " + error.getMessage())
