@@ -76,10 +76,23 @@ public class Log implements Parcelable {
                 return new Uid[size];
             }
         };
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Uid uid = (Uid) o;
+            return value.equals(uid.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return value.hashCode();
+        }
     }
 
     public String metadataToString() {
-        return "[" + date + " " + time + " " + (uid != null ? uid.getValue() : "") + ":" + pid + ":" + tid + " " + priority + "/" + tag + "]";
+        return "[" + date + " " + time + " " + uid + ":" + pid + ":" + tid + " " + priority + "/" + tag + "]";
     }
 
     @Override
@@ -90,7 +103,7 @@ public class Log implements Parcelable {
     public static Log parse(int id, String metadata, String msg) {
         String date;
         String time;
-        String uidStr = null;
+        String uid = null;
         String pid;
         String tid;
         String priority;
@@ -108,7 +121,7 @@ public class Log implements Parcelable {
         startIndex = index + 1;
 
         // Skip spaces
-        while (startIndex < trimmedMetadata.length() && trimmedMetadata.charAt(startIndex) == ' ') {
+        while (trimmedMetadata.charAt(startIndex) == ' ') {
             startIndex++;
         }
 
@@ -119,11 +132,11 @@ public class Log implements Parcelable {
 
         if (hasUid) {
             index = trimmedMetadata.indexOf(':', startIndex);
-            uidStr = trimmedMetadata.substring(startIndex, index);
+            uid = trimmedMetadata.substring(startIndex, index);
             startIndex = index + 1;
 
             // Skip spaces
-            while (startIndex < trimmedMetadata.length() && trimmedMetadata.charAt(startIndex) == ' ') {
+            while (trimmedMetadata.charAt(startIndex) == ' ') {
                 startIndex++;
             }
         }
@@ -133,7 +146,7 @@ public class Log implements Parcelable {
         startIndex = index + 1;
 
         // Skip spaces
-        while (startIndex < trimmedMetadata.length() && trimmedMetadata.charAt(startIndex) == ' ') {
+        while (trimmedMetadata.charAt(startIndex) == ' ') {
             startIndex++;
         }
 
@@ -147,9 +160,17 @@ public class Log implements Parcelable {
 
         tag = trimmedMetadata.substring(startIndex).trim();
 
-        Uid uid = uidStr != null ? new Uid(uidStr) : null;
-
-        return new Log(id, date, time, uid, pid, tid, priority, tag, msg);
+        return new Log(
+                id,
+                date,
+                time,
+                uid != null ? new Uid(uid) : null,
+                pid,
+                tid,
+                priority,
+                tag,
+                msg
+        );
     }
 
     // Getters
@@ -189,7 +210,6 @@ public class Log implements Parcelable {
         return msg;
     }
 
-    // Parcelable implementation
     @Override
     public int describeContents() {
         return 0;
@@ -211,16 +231,17 @@ public class Log implements Parcelable {
     public static final Creator<Log> CREATOR = new Creator<Log>() {
         @Override
         public Log createFromParcel(Parcel in) {
-            int id = in.readInt();
-            String date = in.readString();
-            String time = in.readString();
-            Uid uid = in.readParcelable(Uid.class.getClassLoader());
-            String pid = in.readString();
-            String tid = in.readString();
-            String priority = in.readString();
-            String tag = in.readString();
-            String msg = in.readString();
-            return new Log(id, date, time, uid, pid, tid, priority, tag, msg);
+            return new Log(
+                    in.readInt(),
+                    in.readString(),
+                    in.readString(),
+                    in.readParcelable(Uid.class.getClassLoader()),
+                    in.readString(),
+                    in.readString(),
+                    in.readString(),
+                    in.readString(),
+                    in.readString()
+            );
         }
 
         @Override
@@ -228,4 +249,34 @@ public class Log implements Parcelable {
             return new Log[size];
         }
     };
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Log log = (Log) o;
+        return id == log.id &&
+                date.equals(log.date) &&
+                time.equals(log.time) &&
+                (uid != null ? uid.equals(log.uid) : log.uid == null) &&
+                pid.equals(log.pid) &&
+                tid.equals(log.tid) &&
+                priority.equals(log.priority) &&
+                tag.equals(log.tag) &&
+                msg.equals(log.msg);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = id;
+        result = 31 * result + date.hashCode();
+        result = 31 * result + time.hashCode();
+        result = 31 * result + (uid != null ? uid.hashCode() : 0);
+        result = 31 * result + pid.hashCode();
+        result = 31 * result + tid.hashCode();
+        result = 31 * result + priority.hashCode();
+        result = 31 * result + tag.hashCode();
+        result = 31 * result + msg.hashCode();
+        return result;
+    }
 }

@@ -3,6 +3,7 @@ package com.earthbook.log_exception_module;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
@@ -16,11 +17,11 @@ import com.earthbook.log_exception_module.logcat.Log;
 import com.earthbook.log_exception_module.logcat.LogcatSession;
 import com.earthbook.log_exception_module.timber.Timber;
 
-import java.util.Arrays;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -40,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         ScrollView scrollView = findViewById(R.id.scrollView);
         TextView textView = findViewById(R.id.textview);
 
@@ -50,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         textView.append("myUid: " + android.os.Process.myUid());
         textView.append("GIT_SHA: " + BuildConfig.GIT_SHA);
         textView.append("BUILD_TIME: " + BuildConfig.BUILD_TIME);
-        LogcatSession logcatSession = new LogcatSession(Arrays.asList("main"));
+        LogcatSession logcatSession = new LogcatSession(1000, Set.of("main"));
         // 訂閱狀態流
         logcatSession.clearLogs();
         Disposable startLogcat = logcatSession.start()
@@ -77,6 +79,13 @@ public class MainActivity extends AppCompatActivity {
                         },
                         throwable -> System.err.println("Error receiving logs: " + throwable.getMessage()));
         disposables.add(disposable);
+
+        Disposable makeLogDisposable = Observable.interval(0, 200, TimeUnit.MILLISECONDS)
+                .subscribe(i -> {
+                    Timber.d(i.toString());
+                    Timber.e(i.toString());
+                });
+        disposables.add(makeLogDisposable);
     }
 
 

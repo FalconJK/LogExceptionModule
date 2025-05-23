@@ -1,28 +1,110 @@
 package com.earthbook.log_exception_module.logcat;
 
+import android.net.Uri;
+import android.os.Build;
+
 import com.earthbook.log_exception_module.timber.Timber;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import io.reactivex.rxjava3.core.BackpressureStrategy;
-import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.Disposable;
-import io.reactivex.rxjava3.processors.PublishProcessor;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;
+import io.reactivex.rxjava3.subjects.PublishSubject;
 
 public class LogcatSession {
-    // 狀態類
+    private static final long THREAD_JOIN_TIMEOUT = 5_000L; // 5 seconds
+
+    private final int capacity;
+    private final Set<String> buffers;
+    private volatile long pollIntervalMs = 250;
+
+    private volatile boolean record = false;
+    private Thread recordThread = null;
+
+    private final ReentrantLock lock = new ReentrantLock();
+    private final LinkedBlockingQueue<List<Log>> recordBuffer = new LinkedBlockingQueue<>();
+    private RecordingFileInfo recordingFileInfo = null;
+
+    // 使用ArrayList替代FixedCircularArray
+    private final List<Log> allLogs = new ArrayList<>();
+    private final List<Log> pendingLogs = new ArrayList<>();
+
+    private final List<Filter> filters = new ArrayList<>();
+    private final List<Filter> exclusions = new ArrayList<>();
+
+    // RxJava 3 subjects
+    private final PublishSubject<List<Log>> logSubject = PublishSubject.create();
+    private final BehaviorSubject<List<Log>> allLogsSubject = BehaviorSubject.create();
+
+    private volatile boolean active = false;
+    private volatile boolean paused = false;
+    private boolean stopped = false;
+    private final Object pauseWaiter = new Object();
+
+    private Process logcatProcess = null;
+    private Thread logcatThread = null;
+    private Thread pollerThread = null;
+
+    // RxJava 3 subjects for option support
+    private static final BehaviorSubject<Boolean> uidOptionSupportedSubject = BehaviorSubject.create();
+    private static final BehaviorSubject<Boolean> yearOptionSupportedSubject = BehaviorSubject.create();
+
+    static {
+        // Initialize the support checks
+        Schedulers.io().scheduleDirect(() -> {
+            uidOptionSupportedSubject.onNext(dumpLogcatLogWithOptions("-v", "uid"));
+            yearOptionSupportedSubject.onNext(dumpLogcatLogWithOptions("-v", "year"));
+        });
+    }
+
+    public LogcatSession(int capacity, Set<String> buffers) {
+        this.capacity = capacity;
+        this.buffers = new HashSet<>(buffers);
+    }
+
+    public LogcatSession(int capacity, Set<String> buffers, long pollIntervalMs) {
+        this(capacity, buffers);
+        this.pollIntervalMs = pollIntervalMs;
+    }
+
+    public boolean isPaused() {
+        return paused;
+    }
+
+    public void setPaused(boolean value) {
+        synchronized (pauseWaiter) {
+            paused = value;
+            if (!paused) {
+                pauseWaiter.notify();
+            }
+        }
+    }
+
+    public boolean isRecording() {
+        lock.lock();
+        try {
+            return record;
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public static class Status {
         private final boolean success;
 
@@ -35,190 +117,66 @@ public class LogcatSession {
         }
     }
 
-    private static final long POLL_INTERVAL = 200L; // 200 milliseconds
-
-    private final List<String> buffers;
-    private final AtomicBoolean active = new AtomicBoolean(false);
-    private final AtomicBoolean stopped = new AtomicBoolean(false);
-
-    // 修改為 Log 物件的處理器
-    private final PublishProcessor<List<Log>> logsProcessor = PublishProcessor.create();
-    private final CompositeDisposable disposables = new CompositeDisposable();
-
-    private Process logcatProcess;
-
-    /**
-     * 創建一個新的 LogcatSession 實例
-     *
-     * @param buffers 要監聽的緩衝區列表，例如 ["main", "system", "radio"]
-     */
-    public LogcatSession(List<String> buffers) {
-        this.buffers = new ArrayList<>(buffers);
-    }
-
-    /**
-     * 啟動 logcat 會話並返回狀態流
-     */
-    public Flowable<Status> start() {
-        return Flowable.defer(() -> {
-            System.out.println("LogcatSession: starting");
-
-            if (stopped.get()) {
-                throw new IllegalStateException("LogcatSession was stopped, it cannot be re-started");
-            }
-
-            if (active.getAndSet(true)) {
-                throw new IllegalStateException("LogcatSession is already active!");
-            }
-
-            BehaviorSubject<Status> statusSubject = BehaviorSubject.create();
-
-            // 檢查設備支持的 logcat 選項
-            Disposable optionsDisposable = Observable.fromCallable(() -> {
-                        boolean uidSupported = isUidOptionSupported();
-                        boolean yearSupported = isYearOptionSupported();
-                        return new Object[] { uidSupported, yearSupported };
-                    })
-                    .subscribeOn(Schedulers.io())
-                    .subscribe(options -> {
-                        boolean uidSupported = (boolean) options[0];
-                        boolean yearSupported = (boolean) options[1];
-
-                        // 啟動 logcat 進程
-                        Process process = startLogcatProcess(uidSupported, yearSupported);
-                        statusSubject.onNext(new Status(process != null));
-
-                        if (process != null) {
-                            // 讀取 logcat 輸出
-                            setupLogReading(process);
-                        }
-                    }, throwable -> {
-                        System.out.println("LogcatSession: error checking logcat options: " + throwable.getMessage());
-                        statusSubject.onNext(new Status(false));
-                    });
-
-            disposables.add(optionsDisposable);
-            return statusSubject.toFlowable(BackpressureStrategy.LATEST);
-        });
-    }
-
-    /**
-     * 獲取日誌流 - 現在返回 Log 物件列表
-     */
+    // 獲取日誌流
     public Flowable<List<Log>> getLogs() {
-        return logsProcessor.onBackpressureBuffer();
-    }
+        return Flowable.create(emitter -> {
+            lock.lock();
+            try {
+                emitter.onNext(filtered(new ArrayList<>(allLogs)));
 
-    /**
-     * 停止 logcat 會話
-     */
-    public void stop() {
-        System.out.println("LogcatSession: stopping");
-
-        if (stopped.getAndSet(true)) {
-            return;
-        }
-
-        // 停止 logcat 進程
-        if (logcatProcess != null) {
-            logcatProcess.destroy();
-            logcatProcess = null;
-        }
-
-        // 清理所有訂閱
-        disposables.clear();
-
-        // 標記為非活動狀態
-        active.set(false);
-
-        System.out.println("LogcatSession: stopped");
-    }
-
-    /**
-     * 清除日誌
-     */
-    public void clearLogs() {
-        Disposable stopLogcatDisposable = Observable.fromCallable(() -> {
-                    try {
-                        return new ProcessBuilder("logcat", "-c").start().waitFor() == 0;
-                    } catch (IOException | InterruptedException e) {
-                        e.printStackTrace();
-                        return false;
+                // 設置新日誌的監聽器
+                logSubject.subscribe(logs -> {
+                    if (!logs.isEmpty()) {
+                        emitter.onNext(logs);
                     }
-                })
-                .subscribeOn(Schedulers.io())
-                .subscribe(
-                        success -> System.out.println("LogcatSession: logs cleared: " + success),
-                        error -> System.out.println("LogcatSession: error clearing logs: " + error.getMessage())
-                );
-        disposables.add(stopLogcatDisposable);
+                });
+            } finally {
+                lock.unlock();
+            }
+        }, BackpressureStrategy.BUFFER);
     }
 
-    /**
-     * 檢查是否支持 uid 選項
-     */
-    private boolean isUidOptionSupported() {
-        return dumpLogcatLogWithOptions("-v", "uid");
-    }
-
-    /**
-     * 檢查是否支持 year 選項
-     */
-    private boolean isYearOptionSupported() {
-        return dumpLogcatLogWithOptions("-v", "year");
-    }
-
-    /**
-     * 測試特定 logcat 選項是否被支持
-     */
-    private boolean dumpLogcatLogWithOptions(String... options) {
-        if (options.length == 0) {
-            throw new IllegalArgumentException("No options provided");
+    public Flowable<Status> start() {
+        Timber.d("starting");
+        if (stopped) {
+            throw new IllegalStateException("LogcatSession was stopped, it cannot be re-started");
         }
-
-        try {
-            List<String> cmd = new ArrayList<>();
-            cmd.add("logcat");
-            cmd.add("-v");
-            cmd.add("long");
-            cmd.addAll(Arrays.asList(options));
-            cmd.add("-d");
-
-            Process process = new ProcessBuilder(cmd).start();
-
-            // 使用 RxJava 處理進程輸出
-            Disposable outputDisposable = Completable.create(emitter -> {
-                        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                            String line;
-                            while ((line = reader.readLine()) != null && !emitter.isDisposed()) {
-                                // 消費輸出，但不做任何處理
-                            }
-                            emitter.onComplete();
-                        } catch (Exception e) {
-                            if (!emitter.isDisposed()) {
-                                emitter.onError(e);
-                            }
-                        }
-                    })
-                    .subscribeOn(Schedulers.io())
-                    .subscribe(
-                            () -> {},
-                            error -> System.out.println("Error reading process output: " + error.getMessage())
-                    );
-
-            // 等待進程完成
-            boolean result = process.waitFor() == 0;
-            outputDisposable.dispose();
-            return result;
-
-        } catch (Exception e) {
-            return false;
+        if (active) {
+            throw new IllegalStateException("LogcatSession is already active!");
         }
+        active = true;
+
+        return Flowable.create(emitter -> {
+            final PublishSubject<Status> statusSubject = PublishSubject.create();
+            statusSubject.subscribe(emitter::onNext);
+
+            logcatThread = new Thread(() -> {
+                boolean uidSupported = isUidOptionSupported().blockingGet();
+                boolean yearSupported = isYearOptionSupported().blockingGet();
+                Process process = startLogcatProcess(uidSupported, yearSupported);
+                statusSubject.onNext(new Status(process != null));
+
+                if (process != null) {
+                    readLogs(process);
+                }
+                Timber.d("stopped logcat thread");
+            });
+            logcatThread.start();
+
+            pollerThread = new Thread(this::poll);
+            pollerThread.start();
+        }, BackpressureStrategy.LATEST);
     }
 
-    /**
-     * 啟動 logcat 進程
-     */
+    private List<Log> filtered(List<Log> logs) {
+        if (logs == null) return Collections.emptyList();
+
+        return logs.stream()
+                .filter(e -> exclusions.stream().noneMatch(filter -> filter.apply(e)))
+                .filter(e -> filters.isEmpty() || filters.stream().anyMatch(filter -> filter.apply(e)))
+                .collect(Collectors.toList());
+    }
+
     private Process startLogcatProcess(boolean uidSupported, boolean yearSupported) {
         List<String> cmd = new ArrayList<>();
         cmd.add("logcat");
@@ -239,11 +197,8 @@ public class LogcatSession {
             cmd.add("-b");
             cmd.add(buffer);
         }
-
-        String pid = android.os.Process.myPid() + "";
-        Timber.d(pid);
-        cmd.add("--pid");
-        cmd.add(pid);
+//        cmd.add("--pid");
+//        cmd.add(String.valueOf(android.os.Process.myPid()));
 
         try {
             Process process = new ProcessBuilder(cmd).start();
@@ -251,102 +206,358 @@ public class LogcatSession {
             return process;
         } catch (IOException e) {
             e.printStackTrace();
-            System.out.println("LogcatSession: error starting logcat process");
+            Timber.d("error starting logcat process");
             return null;
         }
     }
 
-    /**
-     * 設置日誌讀取 - 現在使用 LogcatStreamReader 解析 Log 物件
-     */
-    private void setupLogReading(Process process) {
-        // 創建一個 Observable 來讀取和解析日誌
-        Disposable readerDisposable = Observable.<Log>create(emitter -> {
-                    try {
-                        LogcatStreamReader reader = new LogcatStreamReader(process.getInputStream());
-
-                        // 使用無限循環，只有當 emitter 被處置時才會退出
-                        while (!emitter.isDisposed()) {
-                            try {
-                                // 檢查是否有新日誌，但不要無限阻塞
-                                if (reader.hasNext()) {
-                                    emitter.onNext(reader.next());
-                                } else {
-                                    // 如果沒有新日誌，短暫休眠以避免 CPU 使用率過高
-                                    Thread.sleep(50);
-                                }
-                            } catch (InterruptedException ie) {
-                                // 處理中斷異常
-                                Thread.currentThread().interrupt();
-                                break;
-                            } catch (Exception e) {
-                                // 記錄其他異常但繼續運行
-                                System.out.println("LogcatSession: error reading log entry: " + e.getMessage());
-                                // 短暫休眠以避免在出錯情況下的快速循環
-                                Thread.sleep(100);
-                            }
-                        }
-
-                        // 不要在這裡調用 onComplete，讓 Observable 保持活躍直到被明確處置
-                        // emitter.onComplete();
-                    } catch (Exception e) {
-                        if (!emitter.isDisposed()) {
-                            // 只有在嚴重錯誤時才結束 Observable
-                            System.out.println("LogcatSession: critical error in log reader: " + e.getMessage());
-                            emitter.onError(e);
+    private void readLogs(Process process) {
+        try {
+            final Thread stdoutReaderThread = new Thread(() -> {
+                try (LogcatStreamReader logs = new LogcatStreamReader(process.getInputStream())) {
+                    while (logs.hasNext()) {
+                        Log log = logs.next();
+                        lock.lock();
+                        try {
+                            pendingLogs.add(log);
+                        } finally {
+                            lock.unlock();
                         }
                     }
-                })
-                .subscribeOn(Schedulers.io())
-                .buffer(POLL_INTERVAL, TimeUnit.MILLISECONDS)
-                .filter(logs -> !logs.isEmpty())
-                .takeWhile(logs -> !stopped.get())
-                .subscribe(
-                        logs -> {
-                            if (!logs.isEmpty()) {
-                                logsProcessor.onNext(logs);
-                            }
-                        },
-                        error -> System.out.println("LogcatSession: error reading logs: " + error.getMessage()),
-                        () -> System.out.println("LogcatSession: log reading completed")
-                );
+                } catch (Exception e) {
+                    // Ignore
+                }
+                Timber.d("stopped logcat reader thread");
+            });
+            stdoutReaderThread.start();
 
-        disposables.add(readerDisposable);
+            // We don't care about the exit value as the process doesn't exit normally.
+            process.waitFor();
+            process.getInputStream().close();
+            stdoutReaderThread.join(THREAD_JOIN_TIMEOUT);
+        } catch (Exception e) {
+            Timber.d("error reading logs");
+        }
+    }
 
-        // 監控進程結束
-        Disposable processWatcherDisposable = Observable.fromCallable(() -> {
+    private void poll() {
+        while (active) {
+            synchronized (pauseWaiter) {
+                while (paused) {
                     try {
-                        process.waitFor();
-                        return true;
+                        pauseWaiter.wait();
                     } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
+                        // Ignore
+                    }
+                }
+            }
+
+            lock.lock();
+            try {
+                List<Log> pending = new ArrayList<>(pendingLogs);
+                pendingLogs.clear();
+
+                // 管理容量限制
+                allLogs.addAll(pending);
+                if (allLogs.size() > capacity) {
+                    allLogs.subList(0, allLogs.size() - capacity).clear();
+                }
+
+                // If recording is enabled, then add to record buffer.
+                if (record) {
+                    recordBuffer.add(filtered(pending));
+                }
+
+                List<Log> filteredLogs = filtered(pending);
+                if (!filteredLogs.isEmpty()) {
+                    logSubject.onNext(filteredLogs);
+                    allLogsSubject.onNext(filtered(allLogs));
+                }
+            } finally {
+                lock.unlock();
+            }
+
+            try {
+                Thread.sleep(pollIntervalMs);
+            } catch (InterruptedException e) {
+                // Ignore
+            }
+        }
+    }
+
+    public void stop() {
+        Timber.d("stopping");
+        stopped = true;
+        active = false;
+        record = false;
+        setPaused(false);
+
+        if (Build.VERSION.SDK_INT >= 26) {
+            if (logcatProcess != null) {
+                logcatProcess.destroyForcibly();
+            }
+        } else {
+            if (logcatProcess != null) {
+                logcatProcess.destroy();
+            }
+        }
+
+        logcatProcess = null;
+
+        if (logcatThread != null) {
+            try {
+                logcatThread.join(THREAD_JOIN_TIMEOUT);
+            } catch (InterruptedException e) {
+                // Ignore
+            }
+            logcatThread = null;
+        }
+
+        if (pollerThread != null) {
+            try {
+                pollerThread.join(THREAD_JOIN_TIMEOUT);
+            } catch (InterruptedException e) {
+                // Ignore
+            }
+            pollerThread = null;
+        }
+
+        if (recordThread != null) {
+            recordThread.interrupt();
+            try {
+                recordThread.join(THREAD_JOIN_TIMEOUT);
+            } catch (InterruptedException e) {
+                // Ignore
+            }
+            recordThread = null;
+        }
+
+        lock.lock();
+        try {
+            allLogs.clear();
+            pendingLogs.clear();
+            recordBuffer.clear();
+            recordingFileInfo = null;
+        } finally {
+            lock.unlock();
+        }
+
+        Timber.d("stopped");
+    }
+
+    public void startRecording(RecordingFileInfo recordingFileInfo, BufferedWriter writer) {
+        if (record) {
+            return;
+        }
+
+        lock.lock();
+        try {
+            this.recordingFileInfo = recordingFileInfo;
+            record = true;
+            recordThread = new Thread(() -> {
+                while (record) {
+                    List<Log> logs;
+                    try {
+                        logs = recordBuffer.take();
+                    } catch (InterruptedException e) {
+                        break;
+                    }
+
+                    try {
+                        for (Log log : logs) {
+                            writer.write(log.toString());
+                        }
+                        writer.flush();
+                    } catch (Exception e) {
+                        break;
+                    }
+                }
+
+                try {
+                    writer.flush();
+                    writer.close();
+                } catch (Exception e) {
+                    // Ignore
+                }
+            });
+            recordThread.start();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public RecordingFileInfo stopRecording() {
+        lock.lock();
+        try {
+            record = false;
+            if (recordThread != null) {
+                recordThread.interrupt();
+                try {
+                    recordThread.join(THREAD_JOIN_TIMEOUT);
+                } catch (InterruptedException e) {
+                    // Ignore
+                }
+                recordThread = null;
+            }
+            recordBuffer.clear();
+            RecordingFileInfo result = recordingFileInfo;
+            recordingFileInfo = null;
+            return result;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void setFilters(List<Filter> filters, boolean exclusion) {
+        lock.lock();
+        try {
+            if (exclusion) {
+                exclusions.clear();
+                exclusions.addAll(filters);
+            } else {
+                this.filters.clear();
+                this.filters.addAll(filters);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void clearLogs() {
+        lock.lock();
+        try {
+            allLogs.clear();
+            pendingLogs.clear();
+        } finally {
+            lock.unlock();
+        }
+        Disposable stopLogcatDisposable = Observable.fromCallable(() -> {
+                    try {
+                        return new ProcessBuilder("logcat", "-c").start().waitFor() == 0;
+                    } catch (IOException | InterruptedException e) {
+                        e.printStackTrace();
                         return false;
                     }
                 })
                 .subscribeOn(Schedulers.io())
                 .subscribe(
-                        completed -> {
-                            if (completed && !stopped.get()) {
-                                System.out.println("LogcatSession: logcat process terminated unexpectedly");
-                                // 可以考慮在這裡重啟 logcat 進程
-                            }
-                        },
-                        error -> System.out.println("LogcatSession: error waiting for process: " + error.getMessage())
+                        success -> System.out.println("LogcatSession: logs cleared: " + success),
+                        error -> System.out.println("LogcatSession: error clearing logs: " + error.getMessage())
                 );
-
-        disposables.add(processWatcherDisposable);
     }
 
-    /**
-     * 日誌優先級常量
-     */
-    public static class LogPriority {
-        public static final String ASSERT = "A";
-        public static final String DEBUG = "D";
-        public static final String ERROR = "E";
-        public static final String FATAL = "F";
-        public static final String INFO = "I";
-        public static final String VERBOSE = "V";
-        public static final String WARNING = "W";
+    // RxJava接口
+    public Flowable<List<Log>> getLogFlowable() {
+        return logSubject.toFlowable(BackpressureStrategy.BUFFER);
+    }
+
+    public Flowable<List<Log>> getAllLogsFlowable() {
+        return Flowable.create(emitter -> {
+            lock.lock();
+            try {
+                emitter.onNext(filtered(new ArrayList<>(allLogs)));
+            } finally {
+                lock.unlock();
+            }
+
+            allLogsSubject.subscribe(
+                    logs -> emitter.onNext(logs),
+                    error -> emitter.onError(error)
+            );
+        }, BackpressureStrategy.LATEST);
+    }
+
+    public static class RecordingFileInfo {
+        private final String fileName;
+        private final Uri uri;
+        private final boolean isCustomLocation;
+
+        public RecordingFileInfo(String fileName, Uri uri, boolean isCustomLocation) {
+            this.fileName = fileName;
+            this.uri = uri;
+            this.isCustomLocation = isCustomLocation;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public Uri getUri() {
+            return uri;
+        }
+
+        public boolean isCustomLocation() {
+            return isCustomLocation;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            RecordingFileInfo that = (RecordingFileInfo) o;
+            return isCustomLocation == that.isCustomLocation &&
+                    fileName.equals(that.fileName) &&
+                    uri.equals(that.uri);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = fileName.hashCode();
+            result = 31 * result + uri.hashCode();
+            result = 31 * result + (isCustomLocation ? 1 : 0);
+            return result;
+        }
+    }
+
+    public static Single<Boolean> isUidOptionSupported() {
+        return uidOptionSupportedSubject
+                .filter(value -> value != null)
+                .firstOrError();
+    }
+
+    public static Single<Boolean> isYearOptionSupported() {
+        return yearOptionSupportedSubject
+                .filter(value -> value != null)
+                .firstOrError();
+    }
+
+    private static boolean dumpLogcatLogWithOptions(String... options) {
+        if (options.length == 0) {
+            throw new IllegalArgumentException("Options cannot be empty");
+        }
+
+        try {
+            List<String> cmd = new ArrayList<>();
+            cmd.add("logcat");
+            cmd.add("-v");
+            cmd.add("long");
+            Collections.addAll(cmd, options);
+            cmd.add("-d");
+
+            Process process = new ProcessBuilder(cmd).start();
+            Thread stdoutReaderThread = new Thread(() -> {
+                try {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        // Just consume the output
+                    }
+                } catch (Exception e) {
+                    // Ignore
+                }
+            });
+            stdoutReaderThread.start();
+
+            boolean result = process.waitFor() == 0;
+            stdoutReaderThread.join(THREAD_JOIN_TIMEOUT);
+            return result;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Filter interface
+    public interface Filter {
+        boolean apply(Log log);
     }
 }
