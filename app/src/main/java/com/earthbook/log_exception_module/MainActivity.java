@@ -1,6 +1,7 @@
 package com.earthbook.log_exception_module;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -47,6 +48,11 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_log).setOnClickListener(v -> Timber.d("Hello, World!"));
         findViewById(R.id.btn_tag).setOnClickListener(v -> Timber.tag("456").d("Hello, World!"));
+        findViewById(R.id.btn_sessions).setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, SessionListActivity.class);
+            startActivity(intent);
+        });
+
 
 
         textView.append("myUid: " + android.os.Process.myUid());

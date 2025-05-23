@@ -37,13 +37,12 @@ public class LogExporter {
                 .firstOrError()
                 .map(logs -> {
                     // 建立匯出檔案
-                    File exportDir = new File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "logs");
+                    File exportDir = new File(context.getExternalFilesDir(null), "logs");
                     if (!exportDir.exists() && !exportDir.mkdirs()) {
                         throw new IOException("Failed to create export directory");
                     }
 
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
-                    String fileName = "logs_" + sessionId + "_" + dateFormat.format(new Date()) + ".logcat";
+                    String fileName = sessionId + ".logcat";
                     File exportFile = new File(exportDir, fileName);
 
                     // 建立 JSON 結構

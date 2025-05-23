@@ -18,6 +18,13 @@
         android:text="custom tag"
         android:layout_toEndOf="@+id/btn_log" />
 
+    <Button
+        android:id="@+id/btn_sessions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="session activity"
+        android:layout_toEndOf="@+id/btn_tag" />
+
     <ScrollView
         android:id="@+id/scrollView"
         android:layout_width="match_parent"
