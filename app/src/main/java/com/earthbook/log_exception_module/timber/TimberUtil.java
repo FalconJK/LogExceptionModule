@@ -3,6 +3,7 @@ package com.earthbook.log_exception_module.timber;
 import android.os.Build;
 
 import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,6 +33,30 @@ public class TimberUtil {
      */
     @Nullable
     public static String createStackElementTag() {
+//        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+//        if (stackTrace.length <= 2) {
+//            return null;
+//        }
+//
+//        // 尋找第一個非 Timber 類的調用者
+//        for (int i = 2; i < stackTrace.length; i++) {
+//            String className = stackTrace[i].getClassName();
+//            if (!TIMBER_CLASSES.contains(className)) {
+//                String tag = className.substring(className.lastIndexOf('.') + 1);
+//                Matcher m = ANONYMOUS_CLASS.matcher(tag);
+//                if (m.find()) {
+//                    tag = m.replaceAll("");
+//                }
+//                // API 26 中刪除了標籤長度限制。
+//                if (tag.length() <= MAX_TAG_LENGTH || Build.VERSION.SDK_INT >= 26) {
+//                    return tag;
+//                } else {
+//                    return tag.substring(0, MAX_TAG_LENGTH);
+//                }
+//            }
+//        }
+//
+//        return null;
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         if (stackTrace.length <= 2) {
             return null;
@@ -42,16 +67,50 @@ public class TimberUtil {
             String className = stackTrace[i].getClassName();
             if (!TIMBER_CLASSES.contains(className)) {
                 String tag = className.substring(className.lastIndexOf('.') + 1);
+                int lineNumber = stackTrace[i].getLineNumber();
                 Matcher m = ANONYMOUS_CLASS.matcher(tag);
                 if (m.find()) {
                     tag = m.replaceAll("");
                 }
+
                 // API 26 中刪除了標籤長度限制。
                 if (tag.length() <= MAX_TAG_LENGTH || Build.VERSION.SDK_INT >= 26) {
-                    return tag;
+
                 } else {
-                    return tag.substring(0, MAX_TAG_LENGTH);
+                    tag = tag.substring(0, MAX_TAG_LENGTH);
                 }
+                return "(" + tag + ".java:" + lineNumber + ") ";
+            }
+        }
+
+        return null;
+    }
+
+    @Nullable
+    public static String findFileAndLine() {
+        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
+        if (stackTrace.length <= 2) {
+            return null;
+        }
+
+        // 尋找第一個非 Timber 類的調用者
+        for (int i = 2; i < stackTrace.length; i++) {
+            String className = stackTrace[i].getClassName();
+            if (!TIMBER_CLASSES.contains(className)) {
+                String tag = className.substring(className.lastIndexOf('.') + 1);
+                int lineNumber = stackTrace[i].getLineNumber();
+                Matcher m = ANONYMOUS_CLASS.matcher(tag);
+                if (m.find()) {
+                    tag = m.replaceAll("");
+                }
+
+                // API 26 中刪除了標籤長度限制。
+                if (tag.length() <= MAX_TAG_LENGTH || Build.VERSION.SDK_INT >= 26) {
+
+                } else {
+                    tag = tag.substring(0, MAX_TAG_LENGTH);
+                }
+                return "(" + tag + ".java:" + lineNumber + ") ";
             }
         }
 

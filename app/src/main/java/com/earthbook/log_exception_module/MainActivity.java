@@ -48,10 +48,7 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_log).setOnClickListener(v -> Timber.d("Hello, World!"));
         findViewById(R.id.btn_tag).setOnClickListener(v -> Timber.tag("456").d("Hello, World!"));
-        findViewById(R.id.btn_sessions).setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, SessionListActivity.class);
-            startActivity(intent);
-        });
+        findViewById(R.id.btn_sessions).setOnClickListener(v -> Timber.goSessionActivity(this));
 
 
 

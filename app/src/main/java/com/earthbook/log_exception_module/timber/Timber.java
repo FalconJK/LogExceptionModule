@@ -1,5 +1,13 @@
 package com.earthbook.log_exception_module.timber;
 
+import android.app.Application;
+import android.content.Context;
+import android.content.Intent;
+
+import com.earthbook.log_exception_module.MainActivity;
+import com.earthbook.log_exception_module.SessionListActivity;
+import com.earthbook.log_exception_module.db.DbTree;
+
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -191,6 +199,18 @@ public final class Timber{
      */
     public static void log(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
         Forest.log(priority, t, message, args);
+    }
+
+    public static void goSessionActivity(Context context){
+        Intent intent = new Intent(context, SessionListActivity.class);
+        context.startActivity(intent);
+    }
+
+    public static class DbTree2 extends DbTree{
+
+        public DbTree2(Application application) {
+            super(application);
+        }
     }
 
     /**

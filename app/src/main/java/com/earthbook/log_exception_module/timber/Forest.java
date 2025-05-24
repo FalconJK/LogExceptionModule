@@ -29,7 +29,7 @@ public final class Forest {
      */
     public static void v(@Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), null));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), null));
     }
 
     /**
@@ -37,7 +37,7 @@ public final class Forest {
      */
     public static void v(@Nullable Throwable t, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), t));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), t));
     }
 
     /**
@@ -53,7 +53,7 @@ public final class Forest {
      */
     public static void d(@Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), null));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), null));
     }
 
     /**
@@ -61,7 +61,7 @@ public final class Forest {
      */
     public static void d(@Nullable Throwable t, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), t));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), t));
     }
 
     /**
@@ -77,7 +77,7 @@ public final class Forest {
      */
     public static void i(@Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(message, args), null));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), null));
     }
 
     /**
@@ -85,7 +85,7 @@ public final class Forest {
      */
     public static void i(@Nullable Throwable t, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(message, args), t));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), t));
     }
 
     /**
@@ -101,7 +101,7 @@ public final class Forest {
      */
     public static void w(@Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(message, args), null));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), null));
     }
 
     /**
@@ -109,7 +109,7 @@ public final class Forest {
      */
     public static void w(@Nullable Throwable t, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(message, args), t));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), t));
     }
 
     /**
@@ -125,7 +125,7 @@ public final class Forest {
      */
     public static void e(@Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(message, args), null));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), null));
     }
 
     /**
@@ -133,7 +133,7 @@ public final class Forest {
      */
     public static void e(@Nullable Throwable t, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(message, args), t));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), t));
     }
 
     /**
@@ -149,7 +149,7 @@ public final class Forest {
      */
     public static void wtf(@Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), null));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), null));
     }
 
     /**
@@ -157,7 +157,7 @@ public final class Forest {
      */
     public static void wtf(@Nullable Throwable t, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), t));
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), t));
     }
 
     /**
@@ -173,7 +173,7 @@ public final class Forest {
      */
     public static void log(int priority, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(message, args), null));
+        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), null));
     }
 
     /**
@@ -181,7 +181,7 @@ public final class Forest {
      */
     public static void log(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
         String tag = TimberUtil.createStackElementTag();
-        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(message, args), t));
+        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(TimberUtil.findFileAndLine() + message, args), t));
     }
 
     /**
