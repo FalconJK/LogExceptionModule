@@ -33,30 +33,6 @@ public class TimberUtil {
      */
     @Nullable
     public static String createStackElementTag() {
-//        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
-//        if (stackTrace.length <= 2) {
-//            return null;
-//        }
-//
-//        // 尋找第一個非 Timber 類的調用者
-//        for (int i = 2; i < stackTrace.length; i++) {
-//            String className = stackTrace[i].getClassName();
-//            if (!TIMBER_CLASSES.contains(className)) {
-//                String tag = className.substring(className.lastIndexOf('.') + 1);
-//                Matcher m = ANONYMOUS_CLASS.matcher(tag);
-//                if (m.find()) {
-//                    tag = m.replaceAll("");
-//                }
-//                // API 26 中刪除了標籤長度限制。
-//                if (tag.length() <= MAX_TAG_LENGTH || Build.VERSION.SDK_INT >= 26) {
-//                    return tag;
-//                } else {
-//                    return tag.substring(0, MAX_TAG_LENGTH);
-//                }
-//            }
-//        }
-//
-//        return null;
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         if (stackTrace.length <= 2) {
             return null;
@@ -67,19 +43,16 @@ public class TimberUtil {
             String className = stackTrace[i].getClassName();
             if (!TIMBER_CLASSES.contains(className)) {
                 String tag = className.substring(className.lastIndexOf('.') + 1);
-                int lineNumber = stackTrace[i].getLineNumber();
                 Matcher m = ANONYMOUS_CLASS.matcher(tag);
                 if (m.find()) {
                     tag = m.replaceAll("");
                 }
-
                 // API 26 中刪除了標籤長度限制。
                 if (tag.length() <= MAX_TAG_LENGTH || Build.VERSION.SDK_INT >= 26) {
-
+                    return tag;
                 } else {
-                    tag = tag.substring(0, MAX_TAG_LENGTH);
+                    return tag.substring(0, MAX_TAG_LENGTH);
                 }
-                return "(" + tag + ".java:" + lineNumber + ") ";
             }
         }
 
@@ -87,7 +60,7 @@ public class TimberUtil {
     }
 
     @Nullable
-    public static String findFileAndLine() {
+    public static String getLogLink() {
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         if (stackTrace.length <= 2) {
             return null;
@@ -97,23 +70,25 @@ public class TimberUtil {
         for (int i = 2; i < stackTrace.length; i++) {
             String className = stackTrace[i].getClassName();
             if (!TIMBER_CLASSES.contains(className)) {
-                String tag = className.substring(className.lastIndexOf('.') + 1);
-                int lineNumber = stackTrace[i].getLineNumber();
-                Matcher m = ANONYMOUS_CLASS.matcher(tag);
-                if (m.find()) {
-                    tag = m.replaceAll("");
-                }
+                String fileName = stackTrace[i].getFileName();
+                String fileInfo;
 
-                // API 26 中刪除了標籤長度限制。
-                if (tag.length() <= MAX_TAG_LENGTH || Build.VERSION.SDK_INT >= 26) {
-
+                if (fileName != null) {
+                    fileInfo = fileName;
                 } else {
-                    tag = tag.substring(0, MAX_TAG_LENGTH);
+                    // fallback 到類名（移除包名和匿名類後綴）
+                    fileInfo = className.substring(className.lastIndexOf('.') + 1);
+                    Matcher m = ANONYMOUS_CLASS.matcher(fileInfo);
+                    if (m.find()) {
+                        fileInfo = m.replaceAll("");
+                    }
                 }
-                return "(" + tag + ".java:" + lineNumber + ") ";
+
+                return fileInfo + ":" + stackTrace[i].getLineNumber();
             }
         }
 
         return null;
     }
+
 }

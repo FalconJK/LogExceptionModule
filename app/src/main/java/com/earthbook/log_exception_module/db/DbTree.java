@@ -123,7 +123,7 @@ public class DbTree extends Tree {
 
             @Override
             public void onActivityDestroyed(@NonNull Activity activity) {
-
+                forceFlushLogs();
             }
         });
     }

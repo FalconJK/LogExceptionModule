@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="session_list"
+        android:enabled="true"
+        android:icon="@drawable/log_45"
+        android:shortcutShortLabel="@string/session_list_short"
+        android:shortcutLongLabel="@string/session_list_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.earthbook.log_exception_module"
+            android:targetClass="com.earthbook.log_exception_module.SessionListActivity" />
+    </shortcut>
+</shortcuts>
