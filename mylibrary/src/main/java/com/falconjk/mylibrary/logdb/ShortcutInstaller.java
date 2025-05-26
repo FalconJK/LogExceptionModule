@@ -7,10 +7,13 @@ import android.content.Intent;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.database.Cursor;
+import android.graphics.drawable.Icon;
 import android.net.Uri;
 import android.os.Build;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 
 import com.falconjk.mylibrary.R;
 
@@ -29,6 +32,7 @@ public class ShortcutInstaller extends ContentProvider {
         return true;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N_MR1)
     private void installShortcuts(Context context) {
         try {
             ShortcutManager shortcutManager = context.getSystemService(ShortcutManager.class);
@@ -45,9 +49,10 @@ public class ShortcutInstaller extends ContentProvider {
             ShortcutInfo sessionListShortcut = new ShortcutInfo.Builder(context, "session_list")
                     .setShortLabel(context.getString(R.string.session_list_short))
                     .setLongLabel(context.getString(R.string.session_list_long))
+                    .setIcon(Icon.createWithResource(context, R.drawable.log_45))
                     .setIntent(sessionListIntent)
                     .build();
-
+            
             // 設置動態快捷方式
             shortcutManager.setDynamicShortcuts(Arrays.asList(sessionListShortcut));
 
