@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- 自動初始化 ContentProvider -->
+        <provider
+            android:name="com.falconjk.mylibrary.logdb.ShortcutInstaller"
+            android:authorities="${applicationId}.mylibrary.shortcut.installer"
+            android:exported="false"
+            android:initOrder="100"
+            tools:node="merge" />
+
+        <!-- SessionList Activity -->
+        <activity
+            android:name="com.falconjk.mylibrary.logdb.activity.SessionListActivity"
+            android:exported="true" />
+
+        <!-- FileProvider 配置 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

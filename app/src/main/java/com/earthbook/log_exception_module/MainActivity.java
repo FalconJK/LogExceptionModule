@@ -15,7 +15,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.earthbook.log_exception_module.logcat.Log;
 import com.earthbook.log_exception_module.logcat.LogcatSession;
-import com.earthbook.log_exception_module.logdb.Timber;
+import com.falconjk.mylibrary.logdb.Timber;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -93,8 +93,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-        // 清理 Activity 的訂閱
+        Timber.d("onDestroy");
         disposables.clear();
+        // 清理 Activity 的訂閱
+        super.onDestroy();
     }
 }

@@ -2,14 +2,14 @@ package com.earthbook.log_exception_module;
 
 import android.app.Application;
 
-import com.earthbook.log_exception_module.logdb.Timber;
+import com.falconjk.mylibrary.logdb.Timber;
+
 
 public class App extends Application {
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         // 植入調試樹
         Timber.plant(new Timber.DebugTree());
         // 植入數據庫樹

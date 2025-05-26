@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "LogExceptionModule"
 include(":app")
- 
+include(":mylibrary")

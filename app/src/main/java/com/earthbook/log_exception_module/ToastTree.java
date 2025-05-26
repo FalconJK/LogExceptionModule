@@ -3,7 +3,8 @@ package com.earthbook.log_exception_module;
 import android.content.Context;
 import android.util.Log;
 
-import com.earthbook.log_exception_module.logdb.core.Tree;
+
+import com.falconjk.mylibrary.logdb.core.Tree;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
