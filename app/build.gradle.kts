@@ -69,7 +69,7 @@ dependencies {
 
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
     implementation("com.google.code.gson:gson:2.13.1")
-    implementation(project(":mylibrary"))
+    implementation(project(":rxTimber"))
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

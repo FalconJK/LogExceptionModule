@@ -2,7 +2,7 @@ package com.earthbook.log_exception_module;
 
 import android.app.Application;
 
-import com.falconjk.mylibrary.logdb.Timber;
+import com.falconjk.rxTimber.logdb.Timber;
 
 
 public class App extends Application {

@@ -15,7 +15,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.earthbook.log_exception_module.logcat.Log;
 import com.earthbook.log_exception_module.logcat.LogcatSession;
-import com.falconjk.mylibrary.logdb.Timber;
+import com.falconjk.rxTimber.logdb.Timber;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
