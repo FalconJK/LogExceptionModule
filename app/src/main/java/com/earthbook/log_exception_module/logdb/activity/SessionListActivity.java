@@ -1,5 +1,6 @@
-package com.earthbook.log_exception_module;
+package com.earthbook.log_exception_module.logdb.activity;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,8 +16,9 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
-import com.earthbook.log_exception_module.db.LogDatabase;
-import com.earthbook.log_exception_module.export.LogExporter;
+import com.earthbook.log_exception_module.R;
+import com.earthbook.log_exception_module.logdb.db.LogDatabase;
+import com.earthbook.log_exception_module.logdb.db.LogExporter;
 
 import java.io.File;
 import java.util.List;
@@ -29,11 +31,11 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 public class SessionListActivity extends AppCompatActivity {
     private static final String TAG = "SessionListActivity";
 
+    private final CompositeDisposable disposables = new CompositeDisposable();
     private ListView listView;
     private ProgressBar progressBar;
     private TextView emptyView;
     private ArrayAdapter<String> adapter;
-    private CompositeDisposable disposables = new CompositeDisposable();
     private LogExporter logExporter;
 
     @Override
@@ -66,6 +68,73 @@ public class SessionListActivity extends AppCompatActivity {
                 }
             }
         });
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                String sessionId = adapter.getItem(position);
+                if (sessionId != null) {
+                    deleteSession(sessionId);
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        findViewById(R.id.btn_clear_all_log).setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("刪除 Session")
+                    .setMessage("確定要全部 Session 嗎？")
+                    .setPositiveButton("確定", (dialog, which) -> {
+                        disposables.add(LogDatabase.getInstance(SessionListActivity.this)
+                                .logEntryDao()
+                                .deleteAllLogs()
+                                .subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(
+                                        () -> {
+                                            Toast.makeText(this, "刪除全部 Session 成功", Toast.LENGTH_SHORT).show();
+                                            loadSessions();
+                                        },
+                                        throwable -> {
+                                            Log.e(TAG, "Error deleting session", throwable);
+                                            Toast.makeText(this, "刪除全部 Session 失敗: " + throwable.getMessage(),
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                )
+                        );
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+        });
+    }
+
+    private void deleteSession(String sessionId) {
+        new AlertDialog.Builder(this)
+                .setTitle("刪除 Session")
+                .setMessage("確定要刪除這個 Session 嗎？")
+                .setPositiveButton("確定", (dialog, which) -> deleteSessionFromDatabase(sessionId))
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void deleteSessionFromDatabase(String sessionId) {
+        Disposable disposable = LogDatabase.getInstance(this)
+                .logEntryDao()
+                .deleteLogsBySession(sessionId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(
+                        () -> {
+                            Toast.makeText(this, "刪除 Session 成功", Toast.LENGTH_SHORT).show();
+                            loadSessions();
+                        },
+                        throwable -> {
+                            Log.e(TAG, "Error deleting session", throwable);
+                            Toast.makeText(this, "刪除 Session 失敗: " + throwable.getMessage(),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                );
+        disposables.add(disposable);
     }
 
     private void setupAdapter() {

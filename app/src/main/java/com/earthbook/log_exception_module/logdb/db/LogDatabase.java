@@ -1,6 +1,5 @@
-package com.earthbook.log_exception_module.db;
+package com.earthbook.log_exception_module.logdb.db;
 
-import android.app.Application;
 import android.content.Context;
 
 import androidx.room.Database;

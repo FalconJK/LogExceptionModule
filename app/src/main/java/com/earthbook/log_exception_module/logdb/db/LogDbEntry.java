@@ -1,4 +1,4 @@
-package com.earthbook.log_exception_module.db;
+package com.earthbook.log_exception_module.logdb.db;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;

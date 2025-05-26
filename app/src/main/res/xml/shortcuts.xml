@@ -9,6 +9,6 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.earthbook.log_exception_module"
-            android:targetClass="com.earthbook.log_exception_module.SessionListActivity" />
+            android:targetClass="com.earthbook.log_exception_module.logdb.activity.SessionListActivity" />
     </shortcut>
 </shortcuts>

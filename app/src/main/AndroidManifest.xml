@@ -18,7 +18,7 @@
         android:theme="@style/Theme.LogExceptionModule"
         tools:targetApi="31">
         <activity
-            android:name=".SessionListActivity"
+            android:name=".logdb.activity.SessionListActivity"
             android:exported="true" />
         <activity
             android:name=".MainActivity"

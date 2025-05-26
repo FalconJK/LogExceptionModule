@@ -1,4 +1,4 @@
-package com.earthbook.log_exception_module.db;
+package com.earthbook.log_exception_module.logdb;
 
 import android.app.Activity;
 import android.app.Application;
@@ -9,20 +9,27 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.earthbook.log_exception_module.timber.LaunchSession;
-import com.earthbook.log_exception_module.timber.Tree;
+import com.earthbook.log_exception_module.logdb.core.LaunchSession;
+import com.earthbook.log_exception_module.logdb.core.Tree;
+import com.earthbook.log_exception_module.logdb.db.LogDatabase;
+import com.earthbook.log_exception_module.logdb.db.LogDbEntry;
 
+import org.jetbrains.annotations.NotNull;
+
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import io.reactivex.rxjava3.core.BackpressureStrategy;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
-public class DbTree extends Tree {
+class _DbTree extends Tree {
     private static final String TAG = "DbTree";
     private static final int BUFFER_SIZE = 1000; // 降低緩衝區大小
     private static final int BUFFER_TIMEOUT_SECONDS = 30; // 改為30秒
@@ -36,7 +43,7 @@ public class DbTree extends Tree {
 
     private final AtomicLong currentBufferSize;
 
-    public DbTree(Application application) {
+    public _DbTree(Application application) {
         this.context = application.getApplicationContext();
         this.currentSessionId = LaunchSession.getSession();
         LogDatabase.init(application);
@@ -64,7 +71,8 @@ public class DbTree extends Tree {
                     Log.d(TAG, "Saving " + logs.size() + " logs to database");
                     // 重置緩衝區大小計數器
                     currentBufferSize.set(0);
-                    return LogDatabase.getInstance(context).logEntryDao().insertLogs(logs);
+                    return LogDatabase.getInstance(context).logEntryDao().insertLogs(logs)
+                            .doOnComplete(() -> Log.d(TAG, "Logs saved to database successfully"));
                 })
                 .subscribe(
                         () -> Log.d(TAG, "Logs saved to database successfully"),
@@ -90,15 +98,16 @@ public class DbTree extends Tree {
 
         // 註冊生命週期回調
         application.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
-            private int activityCount = 0;
+            private final AtomicInteger activityCount = new AtomicInteger(0);
 
             @Override
             public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle savedInstanceState) {
+
             }
 
             @Override
             public void onActivityStarted(@NonNull Activity activity) {
-                activityCount++;
+                activityCount.incrementAndGet();
             }
 
             @Override
@@ -107,29 +116,36 @@ public class DbTree extends Tree {
 
             @Override
             public void onActivityPaused(@NonNull Activity activity) {
+                forceFlushLogs();
             }
 
             @Override
             public void onActivityStopped(@NonNull Activity activity) {
-                activityCount--;
-                if (activityCount == 0) {
-                    forceFlushLogs();
-                }
+                forceFlushLogs();
             }
 
             @Override
             public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle outState) {
+
             }
 
             @Override
             public void onActivityDestroyed(@NonNull Activity activity) {
                 forceFlushLogs();
+                if (activityCount.decrementAndGet() == 0) {
+                    Log.d(TAG,"clear disposables");
+                    Completable.timer(200, TimeUnit.MILLISECONDS)
+                            .andThen(Completable.fromAction(disposables::clear))
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(Schedulers.io())
+                            .subscribe();
+                }
             }
         });
     }
 
     @Override
-    protected void log(int priority, String tag, @NonNull String message, Throwable t) {
+    protected void log(int priority, @Nullable String tag, String link, @NotNull String message, @Nullable Throwable t, StackTraceElement[] stackTraces) {
         try {
             String fullMessage = message;
             if (t != null) {

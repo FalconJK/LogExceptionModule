@@ -2,9 +2,7 @@ package com.earthbook.log_exception_module;
 
 import android.app.Application;
 
-import com.earthbook.log_exception_module.db.DbTree;
-import com.earthbook.log_exception_module.timber.DebugTree;
-import com.earthbook.log_exception_module.timber.Timber;
+import com.earthbook.log_exception_module.logdb.Timber;
 
 public class App extends Application {
 
@@ -13,11 +11,12 @@ public class App extends Application {
         super.onCreate();
 
         // 植入調試樹
-        Timber.plant(new DebugTree());
-        Timber.plant(new Timber.DbTree2(this));
+        Timber.plant(new Timber.DebugTree());
+        // 植入數據庫樹
+        Timber.plant(new Timber.DbTree(this));
 //        Timber.plant(new ToastTree(getApplicationContext()));
 
-//        Timber.d("應用程序已啟動");
+        Timber.d("應用程序已啟動");
     }
 
     @Override

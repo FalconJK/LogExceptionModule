@@ -1,4 +1,4 @@
-package com.earthbook.log_exception_module.timber;
+package com.earthbook.log_exception_module.logdb.core;
 
 import android.util.Log;
 
@@ -28,168 +28,168 @@ public final class Forest {
      * 記錄 VERBOSE 級別的消息
      */
     public static void v(@Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), null));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), null, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 VERBOSE 級別的異常和消息
      */
     public static void v(@Nullable Throwable t, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, formatArgs(message, args), t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 VERBOSE 級別的異常
      */
     public static void v(@Nullable Throwable t) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, null, t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.VERBOSE, tag, null, t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 DEBUG 級別的消息
      */
     public static void d(@Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), null));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), null, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 DEBUG 級別的異常和消息
      */
     public static void d(@Nullable Throwable t, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, formatArgs(message, args), t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 DEBUG 級別的異常
      */
     public static void d(@Nullable Throwable t) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, null, t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.DEBUG, tag, null, t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 INFO 級別的消息
      */
     public static void i(@Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(message, args), null));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(message, args), null, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 INFO 級別的異常和消息
      */
     public static void i(@Nullable Throwable t, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(message, args), t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, formatArgs(message, args), t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 INFO 級別的異常
      */
     public static void i(@Nullable Throwable t) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, null, t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.INFO, tag, null, t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 WARNING 級別的消息
      */
     public static void w(@Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(message, args), null));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(message, args), null, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 WARNING 級別的異常和消息
      */
     public static void w(@Nullable Throwable t, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(message, args), t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, formatArgs(message, args), t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 WARNING 級別的異常
      */
     public static void w(@Nullable Throwable t) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, null, t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.WARN, tag, null, t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 ERROR 級別的消息
      */
     public static void e(@Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(message, args), null));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(message, args), null, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 ERROR 級別的異常和消息
      */
     public static void e(@Nullable Throwable t, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(message, args), t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, formatArgs(message, args), t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 ERROR 級別的異常
      */
     public static void e(@Nullable Throwable t) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, null, t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ERROR, tag, null, t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 ASSERT 級別的消息
      */
     public static void wtf(@Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), null));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), null, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 ASSERT 級別的異常和消息
      */
     public static void wtf(@Nullable Throwable t, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, formatArgs(message, args), t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄 ASSERT 級別的異常
      */
     public static void wtf(@Nullable Throwable t) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, null, t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(Log.ASSERT, tag, null, t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄指定優先級的消息
      */
     public static void log(int priority, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(message, args), null));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(message, args), null, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄指定優先級的異常和消息
      */
     public static void log(int priority, @Nullable Throwable t, @Nullable String message, Object... args) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(message, args), t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, formatArgs(message, args), t, new Throwable().getStackTrace()));
     }
 
     /**
      * 記錄指定優先級的異常
      */
     public static void log(int priority, @Nullable Throwable t) {
-        String tag = TimberUtil.getLogLink();
-        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, null, t));
+        StackInfo tag = TimberUtil.createStackElementInfo();
+        TimberProcessor.getInstance().processLog(new LogEntry(priority, tag, null, t, new Throwable().getStackTrace()));
     }
 
     private static String formatArgs(@Nullable String message, Object... args) {

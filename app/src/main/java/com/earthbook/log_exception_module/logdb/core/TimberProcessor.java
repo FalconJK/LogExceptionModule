@@ -1,4 +1,6 @@
-package com.earthbook.log_exception_module.timber;
+package com.earthbook.log_exception_module.logdb.core;
+
+import android.util.Log;
 
 import java.util.List;
 
@@ -58,10 +60,14 @@ public class TimberProcessor {
         return Flowable.just(tree)
                 .observeOn(tree.getScheduler())
                 .map(t -> {
-                    if (t.isLoggable(logEntry.tag, logEntry.priority)) {
-                        t.log(logEntry.priority, logEntry.tag, logEntry.message, logEntry.throwable);
+                    if (t.isLoggable(logEntry.stackInfo.tag, logEntry.priority)) {
+                        t.log(logEntry.priority, logEntry.stackInfo.tag, logEntry.stackInfo.link, logEntry.message, logEntry.throwable, logEntry.stackTraces);
                     }
                     return t;
+                })
+                .onErrorResumeNext(throwable -> {
+                    Log.e("TimberProcessor", "Error processing log entry", throwable);
+                    return Flowable.empty();
                 });
     }
 

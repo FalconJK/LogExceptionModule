@@ -1,13 +1,16 @@
-package com.earthbook.log_exception_module.timber;
+package com.earthbook.log_exception_module.logdb;
 
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 
-import com.earthbook.log_exception_module.MainActivity;
-import com.earthbook.log_exception_module.SessionListActivity;
-import com.earthbook.log_exception_module.db.DbTree;
+import com.earthbook.log_exception_module.logdb.activity.SessionListActivity;
+import com.earthbook.log_exception_module.logdb.core.Forest;
+import com.earthbook.log_exception_module.logdb.core.LoggerInterface;
+import com.earthbook.log_exception_module.logdb.core.TimberProcessor;
+import com.earthbook.log_exception_module.logdb.core.Tree;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -201,15 +204,32 @@ public final class Timber{
         Forest.log(priority, t, message, args);
     }
 
-    public static void goSessionActivity(Context context){
+    public static void startSessionActivity(Context context) {
         Intent intent = new Intent(context, SessionListActivity.class);
         context.startActivity(intent);
     }
 
-    public static class DbTree2 extends DbTree{
-
-        public DbTree2(Application application) {
+    public static class DbTree extends _DbTree {
+        public DbTree(Application application) {
             super(application);
+        }
+
+        @Override
+        protected void log(int priority, @Nullable String tag, String link, @NotNull String message, @Nullable Throwable t, StackTraceElement[] stackTraces) {
+            message = String.format("(%s) %s", link, message);
+            super.log(priority, tag, link, message, t, stackTraces);
+        }
+    }
+
+    public static class DebugTree extends _DebugTree {
+        public DebugTree() {
+            super();
+        }
+
+        @Override
+        protected void log(int priority, @Nullable String tag, String link, @NotNull String message, @Nullable Throwable t, StackTraceElement[] stackTraces) {
+            message = String.format("(%s) %s", link, message);
+            super.log(priority, tag, link, message, t, stackTraces);
         }
     }
 

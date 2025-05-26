@@ -1,14 +1,20 @@
-package com.earthbook.log_exception_module.timber;
+package com.earthbook.log_exception_module.logdb;
 
 import android.util.Log;
+
+import androidx.annotation.NonNull;
+
+import com.earthbook.log_exception_module.logdb.core.Tree;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Locale;
+
 /**
  * 用於調試構建的 {@link Tree}。自動從調用類推斷標籤。
  */
-public class DebugTree extends Tree {
+class _DebugTree extends Tree {
     private static final int MAX_LOG_LENGTH = 4000;
 
     /**
@@ -16,8 +22,9 @@ public class DebugTree extends Tree {
      * {@link Log#println(int, String, String) Log.println()} 或
      * {@link Log#wtf(String, String) Log.wtf()} 進行日誌記錄。
      */
+
     @Override
-    protected void log(int priority, @Nullable String tag, @NotNull String message, @Nullable Throwable t) {
+    protected void log(int priority, @Nullable String tag, String link, @NotNull String message, @Nullable Throwable t, StackTraceElement[] stackTraces) {
         if (message.length() <= MAX_LOG_LENGTH) {
             if (priority == Log.ASSERT) {
                 Log.wtf(tag, message);

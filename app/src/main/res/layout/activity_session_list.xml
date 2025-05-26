@@ -7,24 +7,43 @@
     <!-- 標題 -->
     <TextView
         android:id="@+id/titleText"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Log Sessions"
-        android:textSize="24sp"
+        android:textSize="30sp"
         android:textStyle="bold"
         android:gravity="center"
-        android:layout_marginBottom="16dp"
         android:textColor="@android:color/black" />
+
+    <Button
+        android:id="@+id/btn_clear_all_log"
+        android:text="清除所有紀錄"
+        android:layout_alignParentEnd="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/titleText"
+        android:layout_alignBottom="@+id/titleText"
+        />
 
     <!-- ListView 顯示 sessions -->
     <ListView
         android:id="@+id/listView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/titleText"
         android:divider="@android:color/darker_gray"
         android:dividerHeight="1dp"
-        android:choiceMode="singleChoice" />
+        android:layout_below="@id/tv_delete_info"
+        android:choiceMode="singleChoice"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="4dp"/>
+
+    <TextView
+        android:id="@+id/tv_delete_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/titleText"
+        android:textSize="13dp"
+        android:text="短按Session分享 長按刪除"/>
 
     <!-- 空視圖 -->
     <TextView

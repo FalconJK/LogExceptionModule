@@ -1,10 +1,7 @@
-package com.earthbook.log_exception_module.export;
+package com.earthbook.log_exception_module.logdb.db;
 
 import android.content.Context;
-import android.os.Environment;
 
-import com.earthbook.log_exception_module.db.LogDatabase;
-import com.earthbook.log_exception_module.db.LogDbEntry;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -13,9 +10,6 @@ import com.google.gson.JsonArray;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
@@ -42,7 +36,7 @@ public class LogExporter {
                         throw new IOException("Failed to create export directory");
                     }
 
-                    String fileName = sessionId + ".logcat";
+                    String fileName = sessionId.replace(":", "-") + ".logcat";
                     File exportFile = new File(exportDir, fileName);
 
                     // 建立 JSON 結構

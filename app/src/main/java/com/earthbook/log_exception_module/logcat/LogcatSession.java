@@ -3,7 +3,7 @@ package com.earthbook.log_exception_module.logcat;
 import android.net.Uri;
 import android.os.Build;
 
-import com.earthbook.log_exception_module.timber.Timber;
+import com.earthbook.log_exception_module.logdb.Timber;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

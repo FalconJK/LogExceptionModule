@@ -1,7 +1,6 @@
 package com.earthbook.log_exception_module;
 
 import android.annotation.SuppressLint;
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -16,7 +15,7 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.earthbook.log_exception_module.logcat.Log;
 import com.earthbook.log_exception_module.logcat.LogcatSession;
-import com.earthbook.log_exception_module.timber.Timber;
+import com.earthbook.log_exception_module.logdb.Timber;
 
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -48,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_log).setOnClickListener(v -> Timber.d("Hello, World!"));
         findViewById(R.id.btn_tag).setOnClickListener(v -> Timber.tag("456").d("Hello, World!"));
-        findViewById(R.id.btn_sessions).setOnClickListener(v -> Timber.goSessionActivity(this));
+        findViewById(R.id.btn_sessions).setOnClickListener(v -> Timber.startSessionActivity(this));
 
 
 
