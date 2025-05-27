@@ -36,9 +36,9 @@ public class SessionListActivity extends AppCompatActivity {
     private final CompositeDisposable disposables = new CompositeDisposable();
     private ListView listView;
     private ProgressBar progressBar;
-    private TextView emptyView;
     private ArrayAdapter<String> adapter;
     private LogExporter logExporter;
+    private View loadingView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,10 +55,10 @@ public class SessionListActivity extends AppCompatActivity {
     private void initViews() {
         listView = findViewById(R.id.listView);
         progressBar = findViewById(R.id.progressBar);
-        emptyView = findViewById(R.id.emptyView);
+        loadingView = findViewById(R.id.loadingView);
 
         // 設置空視圖
-        listView.setEmptyView(emptyView);
+        listView.setEmptyView(loadingView);
 
         // 設置點擊監聽器
         listView.setOnItemClickListener((parent, view, position, id) -> {
@@ -232,7 +232,11 @@ public class SessionListActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
 
         if (sessions.isEmpty()) {
-            emptyView.setText("沒有找到任何 Session");
+            loadingView.setVisibility(View.VISIBLE);
+            listView.setVisibility(View.GONE);
+        } else {
+            loadingView.setVisibility(View.GONE);
+            listView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -381,7 +385,13 @@ public class SessionListActivity extends AppCompatActivity {
     }
 
     private void showLoading(boolean show) {
-        progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (loadingView != null) {
+            loadingView.setVisibility(show ? View.VISIBLE : View.GONE);
+        } else {
+            // 如果沒有找到 loadingView，使用原來的方式
+            progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
+
         listView.setVisibility(show ? View.GONE : View.VISIBLE);
     }
 

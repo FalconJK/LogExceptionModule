@@ -1,77 +1,171 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp">
+    android:orientation="vertical"
+    android:background="#f5f5f5">
 
-    <!-- 標題 -->
-    <TextView
-        android:id="@+id/titleText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Log Sessions"
-        android:textSize="30sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:textColor="@android:color/black" />
-
-    <Button
-        android:id="@+id/btn_clear_all_log"
-        android:text="清除所有紀錄"
-        android:layout_alignParentEnd="true"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="12dp"
-        android:layout_below="@+id/btn_export_db"
-
-        />
-    <Button
-        android:id="@+id/btn_export_db"
-        android:text="匯出Log資料庫"
-        android:textSize="12dp"
-        android:layout_alignParentEnd="true"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        />
-
-    <!-- ListView 顯示 sessions -->
-    <ListView
-        android:id="@+id/listView"
+    <!-- 頂部標題區域 -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:divider="@android:color/darker_gray"
-        android:dividerHeight="1dp"
-        android:layout_below="@id/btn_clear_all_log"
-        android:choiceMode="singleChoice"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="4dp"/>
-
-    <TextView
-        android:id="@+id/tv_delete_info"
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/titleText"
-        android:textSize="13dp"
-        android:text="短按Session分享 長按刪除"/>
+        android:orientation="vertical"
+        android:background="@android:color/white"
+        android:elevation="4dp"
+        android:padding="16dp">
 
-    <!-- 空視圖 -->
-    <TextView
-        android:id="@+id/emptyView"
+        <!-- 標題和操作按鈕區域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/titleText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Log Sessions"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="#2c3e50" />
+
+            <!-- 操作按鈕容器 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_export_db"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/button_outline_blue"
+                    android:text="匯出資料庫"
+                    android:textColor="#3498db"
+                    android:textSize="12sp"
+                    android:paddingHorizontal="12dp"
+                    android:textAllCaps="false"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:textStyle="bold"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btn_clear_all_log"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:background="@drawable/button_outline_red"
+                    android:text="清除全部"
+                    android:textStyle="bold"
+                    android:textColor="#e74c3c"
+                    android:gravity="center"
+                    android:textSize="12sp"
+                    android:paddingHorizontal="12dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- 操作提示 -->
+        <TextView
+            android:id="@+id/tv_delete_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="💡 短按分享 Session，長按刪除"
+            android:textColor="#7f8c8d"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <!-- 主要內容區域 -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/titleText"
-        android:text="載入中..."
-        android:gravity="center"
-        android:textSize="16sp"
-        android:textColor="@android:color/darker_gray"
-        android:visibility="gone" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_margin="16dp">
 
-    <!-- 載入指示器 -->
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:visibility="gone" />
+        <!-- Session列表 -->
+        <ListView
+            android:id="@+id/listView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/white"
+            android:choiceMode="singleChoice"
+            android:divider="#e0e0e0"
+            android:dividerHeight="1dp"
+            android:elevation="2dp"
+            android:padding="8dp"
+            android:scrollbars="vertical"
+            android:fadingEdge="vertical"
+            android:fadingEdgeLength="16dp"
+            />
 
-</RelativeLayout>
+        <!-- 空視圖 -->
+        <LinearLayout
+            android:id="@+id/emptyView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📋"
+                android:textSize="48sp"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="沒有找到任何 Session"
+                android:textColor="#7f8c8d"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="開始使用應用程式來記錄日誌"
+                android:textColor="#bdc3c7"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <!-- 載入指示器 -->
+        <LinearLayout
+            android:id="@+id/loadingView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:indeterminateTint="#3498db" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="載入中..."
+                android:textColor="#7f8c8d"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+</LinearLayout>
