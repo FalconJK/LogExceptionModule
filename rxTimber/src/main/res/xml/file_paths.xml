@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- 外部檔案目錄 -->
+  <external-files-path
+      name="external_files"
+      path="." />
+
+  <!-- 專門為資料庫檔案 -->
+  <external-files-path
+      name="database_files"
+      path="db/" />
+
+  <!-- 專門為日誌檔案 -->
+  <external-files-path
+      name="log_files"
+      path="logs/" />
+
+  <!-- 內部檔案目錄（如果需要） -->
+  <files-path
+      name="internal_files"
+      path="." />
+</paths>

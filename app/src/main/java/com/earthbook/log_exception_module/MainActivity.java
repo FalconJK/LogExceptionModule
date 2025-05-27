@@ -2,10 +2,10 @@ package com.earthbook.log_exception_module;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
-import android.widget.Button;
-import android.widget.Toast;
+import android.view.WindowManager;
+import android.widget.ScrollView;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,6 +13,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.earthbook.log_exception_module.logcat.Log;
+import com.earthbook.log_exception_module.logcat.LogcatSession;
+import com.falconjk.rxTimber.logdb.Timber;
+
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -36,160 +41,61 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        ScrollView scrollView = findViewById(R.id.scrollView);
+        TextView textView = findViewById(R.id.textview);
 
-        // 初始化所有按鈕
-        initButtons();
+        findViewById(R.id.btn_log).setOnClickListener(v -> Timber.d("Hello, World!"));
+        findViewById(R.id.btn_tag).setOnClickListener(v -> Timber.tag("456").d("Hello, World!"));
+        findViewById(R.id.btn_sessions).setOnClickListener(v -> Timber.startSessionActivity(this));
 
-        // 基本日誌測試
-        Timber.d("MainActivity 已創建");
+
+
+        textView.append("myUid: " + android.os.Process.myUid());
+        textView.append("GIT_SHA: " + BuildConfig.GIT_SHA);
+        textView.append("BUILD_TIME: " + BuildConfig.BUILD_TIME);
+        LogcatSession logcatSession = new LogcatSession(1000, Set.of("main"));
+        // 訂閱狀態流
+        logcatSession.clearLogs();
+        Disposable startLogcat = logcatSession.start()
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .subscribe(status -> Timber.d("Logcat started: " + status.isSuccess()),
+                        throwable -> Timber.d("Error starting logcat: " + throwable.getMessage()));
+        disposables.add(startLogcat);
+
+        Disposable disposable = logcatSession.getLogs()
+                .subscribeOn(Schedulers.computation())
+                .map(logs -> {
+                    StringBuilder sb = new StringBuilder();
+                    for (Log log : logs) {
+                        sb.append(log.getTag()).append(" :")
+                                .append(log.getMsg()).append("\n");
+                    }
+                    return sb;
+                })
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(sb -> {
+                            textView.append(sb);
+                            scrollView.fullScroll(View.FOCUS_DOWN);
+                        },
+                        throwable -> System.err.println("Error receiving logs: " + throwable.getMessage()));
+        disposables.add(disposable);
+
+//        Disposable makeLogDisposable = Observable.interval(0, 200, TimeUnit.MILLISECONDS)
+//                .subscribe(i -> {
+//                    Timber.d(i.toString());
+//                    Timber.e(i.toString());
+//                });
+//        disposables.add(makeLogDisposable);
     }
 
-    private void initButtons() {
-        // Debug 日誌測試
-        Button btnTestDebug = findViewById(R.id.btnTestDebug);
-        btnTestDebug.setOnClickListener(v -> {
-            Timber.d("這是一條調試日誌");
-            showToast("Debug 日誌已發送，請查看 Logcat");
-        });
-
-        // Verbose 日誌測試
-        Button btnTestVerbose = findViewById(R.id.btnTestVerbose);
-        btnTestVerbose.setOnClickListener(v -> {
-            Timber.v("這是一條詳細日誌");
-            showToast("Verbose 日誌已發送，請查看 Logcat");
-        });
-
-        // Info 日誌測試
-        Button btnTestInfo = findViewById(R.id.btnTestInfo);
-        btnTestInfo.setOnClickListener(v -> {
-            Timber.i("這是一條信息日誌");
-            showToast("Info 日誌已發送，請查看 Logcat");
-        });
-
-        // Warning 日誌測試
-        Button btnTestWarning = findViewById(R.id.btnTestWarning);
-        btnTestWarning.setOnClickListener(v -> {
-            Timber.w("這是一條警告日誌");
-            showToast("Warning 日誌已發送，請查看 Logcat");
-        });
-
-        // Error 日誌測試
-        Button btnTestError = findViewById(R.id.btnTestError);
-        btnTestError.setOnClickListener(v -> {
-            Timber.e("這是一條錯誤日誌");
-            showToast("Error 日誌已發送，請查看 Logcat");
-        });
-
-        // WTF 日誌測試
-        Button btnTestWtf = findViewById(R.id.btnTestWtf);
-        btnTestWtf.setOnClickListener(v -> {
-            Timber.wtf("這是一條嚴重錯誤日誌");
-            showToast("WTF 日誌已發送，請查看 Logcat");
-        });
-
-        // 異常日誌測試
-        Button btnTestException = findViewById(R.id.btnTestException);
-        btnTestException.setOnClickListener(v -> {
-            try {
-                throw new RuntimeException("測試異常");
-            } catch (Exception e) {
-                Timber.e(e, "捕獲到異常");
-                showToast("異常日誌已發送，請查看 Logcat");
-            }
-        });
-
-        // 自定義標籤測試
-        Button btnTestCustomTag = findViewById(R.id.btnTestCustomTag);
-        btnTestCustomTag.setOnClickListener(v -> {
-            Timber.tag("CustomTag").v("這是一條帶有自定義標籤的日誌");
-            Timber.tag("CustomTag").d("這是一條帶有自定義標籤的日誌");
-            Timber.tag("CustomTag").i("這是一條帶有自定義標籤的日誌");
-            Timber.tag("CustomTag").w("這是一條帶有自定義標籤的日誌");
-            Timber.tag("CustomTag").e("這是一條帶有自定義標籤的日誌");
-            Timber.tag("CustomTag").wtf("這是一條帶有自定義標籤的日誌");
-
-            showToast("自定義標籤日誌已發送，請查看 Logcat");
-        });
-
-        // 格式化日誌測試
-        Button btnTestFormatting = findViewById(R.id.btnTestFormatting);
-        btnTestFormatting.setOnClickListener(v -> {
-            Timber.d("格式化測試: %d, %s, %.2f", 123, "字符串", 3.14159);
-            showToast("格式化日誌已發送，請查看 Logcat");
-        });
-
-        // 多樹植入測試
-        Button btnTestMultipleTree = findViewById(R.id.btnTestMultipleTree);
-        btnTestMultipleTree.setOnClickListener(v -> {
-            // 創建自定義樹
-            Timber.Tree customTree = new Timber.Tree() {
-                @Override
-                protected void log(int priority, String tag, String message, Throwable t) {
-                    // 將日誌輸出到 Toast
-
-                    Log.println(priority, "自定義" + tag, message);
-
-//                    runOnUiThread(() -> Toast.makeText(MainActivity.this,
-//                            "自定義樹: " + message, Toast.LENGTH_SHORT).show());
-                }
-            };
-
-            // 植入自定義樹
-            Timber.plant(customTree);
-
-            // 測試日誌
-            Timber.d("這條日誌會同時發送到 Logcat 和 Toast");
-
-            // 測試完成後移除自定義樹
-            Disposable disposable = Observable.timer(20, TimeUnit.SECONDS)
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(aLong -> {
-                        Timber.uproot(customTree);
-                        showToast("自定義樹已移除");
-                    });
-
-            disposables.add(disposable);
-        });
-
-        // 清理訂閱測試
-        Button btnClearDisposables = findViewById(R.id.btnClearDisposables);
-        btnClearDisposables.setOnClickListener(v -> {
-            Timber.clearDisposables();
-            disposables.clear();
-            showToast("所有訂閱已清理");
-        });
-
-        // 測試應用程序生命週期
-        Button btnTestAppLifecycle = findViewById(R.id.btnTestAppLifecycle);
-        btnTestAppLifecycle.setOnClickListener(v -> {
-            // 模擬應用程序進入後台
-            showToast("請按 Home 鍵將應用置於後台，觀察生命週期日誌");
-
-            // 添加一個延遲任務，模擬後台任務
-            Disposable disposable = Observable.timer(5, TimeUnit.SECONDS)
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(aLong -> {
-                        // 這個任務會在應用進入後台 5 秒後執行
-                        Timber.d("後台任務執行");
-                    });
-
-            // 將訂閱添加到 Timber 的 CompositeDisposable
-            disposables.add(disposable);
-        });
-
-    }
-
-    private void showToast(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-    }
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-
-        // 清理 Activity 的訂閱
+        Timber.d("onDestroy");
         disposables.clear();
+        // 清理 Activity 的訂閱
+        super.onDestroy();
     }
 }

@@ -2,14 +2,19 @@ package com.earthbook.log_exception_module;
 
 import android.app.Application;
 
+import com.falconjk.rxTimber.logdb.Timber;
+
+
 public class App extends Application {
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         // 植入調試樹
         Timber.plant(new Timber.DebugTree());
+        // 植入數據庫樹
+        Timber.plant(new Timber.DbTree(this));
+//        Timber.plant(new ToastTree(getApplicationContext()));
 
         Timber.d("應用程序已啟動");
     }
