@@ -21,8 +21,17 @@
         android:layout_alignParentEnd="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/titleText"
-        android:layout_alignBottom="@+id/titleText"
+        android:textSize="12dp"
+        android:layout_below="@+id/btn_export_db"
+
+        />
+    <Button
+        android:id="@+id/btn_export_db"
+        android:text="匯出Log資料庫"
+        android:textSize="12dp"
+        android:layout_alignParentEnd="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         />
 
     <!-- ListView 顯示 sessions -->
@@ -32,9 +41,9 @@
         android:layout_height="match_parent"
         android:divider="@android:color/darker_gray"
         android:dividerHeight="1dp"
-        android:layout_below="@id/tv_delete_info"
+        android:layout_below="@id/btn_clear_all_log"
         android:choiceMode="singleChoice"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:layout_marginBottom="4dp"/>
 
     <TextView

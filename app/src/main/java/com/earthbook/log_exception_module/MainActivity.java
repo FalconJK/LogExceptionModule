@@ -82,12 +82,12 @@ public class MainActivity extends AppCompatActivity {
                         throwable -> System.err.println("Error receiving logs: " + throwable.getMessage()));
         disposables.add(disposable);
 
-        Disposable makeLogDisposable = Observable.interval(0, 200, TimeUnit.MILLISECONDS)
-                .subscribe(i -> {
-                    Timber.d(i.toString());
-                    Timber.e(i.toString());
-                });
-        disposables.add(makeLogDisposable);
+//        Disposable makeLogDisposable = Observable.interval(0, 200, TimeUnit.MILLISECONDS)
+//                .subscribe(i -> {
+//                    Timber.d(i.toString());
+//                    Timber.e(i.toString());
+//                });
+//        disposables.add(makeLogDisposable);
     }
 
 

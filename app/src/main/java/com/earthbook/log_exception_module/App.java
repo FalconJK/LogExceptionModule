@@ -14,7 +14,7 @@ public class App extends Application {
         Timber.plant(new Timber.DebugTree());
         // 植入數據庫樹
         Timber.plant(new Timber.DbTree(this));
-        Timber.plant(new ToastTree(getApplicationContext()));
+//        Timber.plant(new ToastTree(getApplicationContext()));
 
         Timber.d("應用程序已啟動");
     }

@@ -6,10 +6,12 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
+import com.google.gson.stream.JsonWriter;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
@@ -17,6 +19,8 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 
 public class LogExporter {
     private static final String TAG = "LogExporter";
+    private static final int BATCH_SIZE = 1000; // 每批處理 1000 筆記錄
+    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB 限制
 
     private final Context context;
     private final Gson gson;
@@ -27,9 +31,17 @@ public class LogExporter {
     }
 
     public Single<File> exportSessionLogs(String sessionId) {
-        return LogDatabase.getInstance(context).logEntryDao().getLogsBySession(sessionId)
-                .firstOrError()
-                .map(logs -> {
+        return Single.fromCallable(() -> {
+                    // 先檢查日誌數量
+                    int logCount = LogDatabase.getInstance(context)
+                            .logEntryDao()
+                            .getLogCountForSession(sessionId)
+                            .blockingGet();
+
+                    if (logCount == 0) {
+                        throw new IllegalStateException("沒有找到日誌資料");
+                    }
+
                     // 建立匯出檔案
                     File exportDir = new File(context.getExternalFilesDir(null), "logs");
                     if (!exportDir.exists() && !exportDir.mkdirs()) {
@@ -39,68 +51,130 @@ public class LogExporter {
                     String fileName = sessionId.replace(":", "-") + ".logcat";
                     File exportFile = new File(exportDir, fileName);
 
-                    // 建立 JSON 結構
-                    JsonObject rootObject = new JsonObject();
+                    // 使用 JsonWriter 進行串流寫入
+                    try (FileWriter fileWriter = new FileWriter(exportFile);
+                         JsonWriter jsonWriter = new JsonWriter(fileWriter)) {
 
-                    // 添加 metadata
-                    JsonObject metadata = new JsonObject();
-                    JsonObject device = new JsonObject();
-                    device.addProperty("deviceId", android.os.Build.SERIAL);
-                    device.addProperty("name", android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL);
-                    device.addProperty("serialNumber", android.os.Build.SERIAL);
-                    device.addProperty("isOnline", true);
-                    device.addProperty("release", android.os.Build.VERSION.RELEASE);
-                    device.addProperty("sdk", android.os.Build.VERSION.SDK_INT);
-                    device.addProperty("featureLevel", android.os.Build.VERSION.SDK_INT);
-                    device.addProperty("model", android.os.Build.MODEL);
-                    device.addProperty("type", "HANDHELD");
-                    device.addProperty("isEmulator", isEmulator());
+                        jsonWriter.setIndent("  ");
+                        jsonWriter.beginObject();
 
-                    metadata.add("device", device);
-                    metadata.addProperty("filter", "package:" + context.getPackageName());
+                        // 寫入 metadata
+                        writeMetadata(jsonWriter);
 
-                    JsonArray projectApplicationIds = new JsonArray();
-                    projectApplicationIds.add(context.getPackageName());
-                    projectApplicationIds.add(context.getPackageName() + ".test");
-                    metadata.add("projectApplicationIds", projectApplicationIds);
+                        // 寫入日誌資料（分批處理）
+                        writeLogcatMessages(jsonWriter, sessionId, logCount);
 
-                    rootObject.add("metadata", metadata);
-
-                    // 添加日誌
-                    JsonArray logcatMessages = new JsonArray();
-                    for (LogDbEntry log : logs) {
-                        JsonObject logObject = new JsonObject();
-
-                        JsonObject header = new JsonObject();
-                        header.addProperty("logLevel", log.getLogLevel());
-                        header.addProperty("pid", log.getPid());
-                        header.addProperty("tid", log.getTid());
-                        header.addProperty("applicationId", log.getApplicationId());
-                        header.addProperty("processName", log.getProcessName());
-                        header.addProperty("tag", log.getTag());
-
-                        JsonObject timestamp = new JsonObject();
-                        timestamp.addProperty("seconds", log.getTimestampSeconds());
-                        timestamp.addProperty("nanos", log.getTimestampNanos());
-                        header.add("timestamp", timestamp);
-
-                        logObject.add("header", header);
-                        logObject.addProperty("message", log.getMessage());
-
-                        logcatMessages.add(logObject);
+                        jsonWriter.endObject();
                     }
 
-                    rootObject.add("logcatMessages", logcatMessages);
-
-                    // 寫入檔案
-                    try (FileWriter writer = new FileWriter(exportFile)) {
-                        writer.write(gson.toJson(rootObject));
+                    // 檢查檔案大小
+                    if (exportFile.length() > MAX_FILE_SIZE) {
+                        exportFile.delete();
+                        throw new IOException("匯出檔案太大 (" + (exportFile.length() / 1024 / 1024) + "MB)，請考慮縮小日誌範圍");
                     }
 
                     return exportFile;
                 })
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread());
+    }
+
+    private void writeMetadata(JsonWriter jsonWriter) throws IOException {
+        jsonWriter.name("metadata");
+        jsonWriter.beginObject();
+
+        // Device info
+        jsonWriter.name("device");
+        jsonWriter.beginObject();
+        jsonWriter.name("deviceId").value(android.os.Build.SERIAL);
+        jsonWriter.name("name").value(android.os.Build.MANUFACTURER + " " + android.os.Build.MODEL);
+        jsonWriter.name("serialNumber").value(android.os.Build.SERIAL);
+        jsonWriter.name("isOnline").value(true);
+        jsonWriter.name("release").value(android.os.Build.VERSION.RELEASE);
+        jsonWriter.name("sdk").value(android.os.Build.VERSION.SDK_INT);
+        jsonWriter.name("featureLevel").value(android.os.Build.VERSION.SDK_INT);
+        jsonWriter.name("model").value(android.os.Build.MODEL);
+        jsonWriter.name("type").value("HANDHELD");
+        jsonWriter.name("isEmulator").value(isEmulator());
+        jsonWriter.endObject();
+
+        jsonWriter.name("filter").value("package:" + context.getPackageName());
+
+        // Project application IDs
+        jsonWriter.name("projectApplicationIds");
+        jsonWriter.beginArray();
+        jsonWriter.value(context.getPackageName());
+        jsonWriter.value(context.getPackageName() + ".test");
+        jsonWriter.endArray();
+
+        jsonWriter.endObject();
+    }
+
+    private void writeLogcatMessages(JsonWriter jsonWriter, String sessionId, int totalCount) throws IOException {
+        jsonWriter.name("logcatMessages");
+        jsonWriter.beginArray();
+
+        int offset = 0;
+        int processedCount = 0;
+
+        while (offset < totalCount) {
+            // 分批查詢日誌
+            List<LogDbEntry> batch = LogDatabase.getInstance(context)
+                    .logEntryDao()
+                    .getLogsBySessionWithLimit(sessionId, BATCH_SIZE, offset)
+                    .blockingFirst();
+
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            // 寫入這批日誌
+            for (LogDbEntry log : batch) {
+                writeLogEntry(jsonWriter, log);
+                processedCount++;
+
+                // 可以在這裡添加進度回調
+                if (processedCount % 100 == 0) {
+                    // 可以發送進度更新
+                }
+            }
+
+            offset += BATCH_SIZE;
+        }
+
+        jsonWriter.endArray();
+    }
+
+    private void writeLogEntry(JsonWriter jsonWriter, LogDbEntry log) throws IOException {
+        jsonWriter.beginObject();
+
+        // Header
+        jsonWriter.name("header");
+        jsonWriter.beginObject();
+        jsonWriter.name("logLevel").value(log.getLogLevel());
+        jsonWriter.name("pid").value(log.getPid());
+        jsonWriter.name("tid").value(log.getTid());
+        jsonWriter.name("applicationId").value(log.getApplicationId());
+        jsonWriter.name("processName").value(log.getProcessName());
+        jsonWriter.name("tag").value(log.getTag());
+
+        // Timestamp
+        jsonWriter.name("timestamp");
+        jsonWriter.beginObject();
+        jsonWriter.name("seconds").value(log.getTimestampSeconds());
+        jsonWriter.name("nanos").value(log.getTimestampNanos());
+        jsonWriter.endObject();
+
+        jsonWriter.endObject();
+
+        // Message (限制長度)
+        String message = log.getMessage();
+        if (message != null && message.length() > 10000) {
+            message = message.substring(0, 10000) + "... [訊息過長，已截斷]";
+        }
+        jsonWriter.name("message").value(message);
+
+        jsonWriter.endObject();
     }
 
     private boolean isEmulator() {
