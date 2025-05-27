@@ -2,6 +2,8 @@ package com.falconjk.rxTimber.logdb.core;
 
 import android.util.Log;
 
+import com.falconjk.rxTimber.logdb.Timber;
+
 import java.util.List;
 
 import io.reactivex.rxjava3.core.Flowable;
@@ -66,7 +68,8 @@ public class TimberProcessor {
                     return t;
                 })
                 .onErrorResumeNext(throwable -> {
-                    Log.e("TimberProcessor", "Error processing log entry", throwable);
+                    Timber.e(throwable, "Error processing log entry in %s tree:", tree.getClass().getSimpleName());
+                    // Log.e("TimberProcessor", "Error processing log entry", throwable);
                     return Flowable.empty();
                 });
     }

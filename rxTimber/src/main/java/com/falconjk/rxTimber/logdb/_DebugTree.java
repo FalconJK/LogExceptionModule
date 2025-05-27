@@ -2,6 +2,9 @@ package com.falconjk.rxTimber.logdb;
 
 import android.util.Log;
 
+import androidx.annotation.NonNull;
+
+import com.falconjk.rxTimber.logdb.core.TimberUtil;
 import com.falconjk.rxTimber.logdb.core.Tree;
 
 import org.jetbrains.annotations.NotNull;
@@ -21,12 +24,12 @@ class _DebugTree extends Tree {
 
     @Override
     protected void log(int priority, @Nullable String tag, String link, @NotNull String message, @Nullable Throwable t, StackTraceElement[] stackTraces) {
+        if (t != null) {
+            message = message + "\n" + TimberUtil.getStackTraceString(t);
+        }
+
         if (message.length() <= MAX_LOG_LENGTH) {
-            if (priority == Log.ASSERT) {
-                Log.wtf(tag, message);
-            } else {
-                Log.println(priority, tag, message);
-            }
+            printLog(priority, tag, message);
             return;
         }
 
@@ -37,14 +40,18 @@ class _DebugTree extends Tree {
             do {
                 int end = Math.min(newline, i + MAX_LOG_LENGTH);
                 String part = message.substring(i, end);
-                if (priority == Log.ASSERT) {
-                    Log.wtf(tag, part);
-                } else {
-                    Log.println(priority, tag, part);
-                }
+                printLog(priority, tag, part);
                 i = end;
             } while (i < newline);
             i++;
+        }
+    }
+
+    private static void printLog(int priority, @Nullable String tag, @NonNull String message) {
+        if (priority == Log.ASSERT) {
+            Log.wtf(tag, message);
+        } else {
+            Log.println(priority, tag, message);
         }
     }
 }

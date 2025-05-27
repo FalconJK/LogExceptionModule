@@ -14,7 +14,9 @@
         <!-- SessionList Activity -->
         <activity
             android:name="com.falconjk.rxTimber.logdb.activity.SessionListActivity"
-            android:exported="true" />
+            android:exported="true"
+            android:theme="@style/Theme.Material3.Light.NoActionBar"
+            />
 
         <!-- FileProvider 配置 -->
         <provider

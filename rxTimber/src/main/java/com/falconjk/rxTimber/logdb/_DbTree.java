@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.falconjk.rxTimber.logdb.core.LaunchSession;
+import com.falconjk.rxTimber.logdb.core.TimberUtil;
 import com.falconjk.rxTimber.logdb.core.Tree;
 import com.falconjk.rxTimber.logdb.db.LogDatabase;
 import com.falconjk.rxTimber.logdb.db.LogDbEntry;
@@ -156,7 +157,7 @@ class _DbTree extends Tree {
         try {
             String fullMessage = message;
             if (t != null) {
-                fullMessage = message + "\n" + Log.getStackTraceString(t);
+                fullMessage = message + "\n" + TimberUtil.getStackTraceString(t);
             }
 
             LogDbEntry logEntry = new LogDbEntry(
