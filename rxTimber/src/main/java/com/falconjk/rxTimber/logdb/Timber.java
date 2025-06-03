@@ -1,6 +1,8 @@
 package com.falconjk.rxTimber.logdb;
 
+import android.app.Activity;
 import android.app.Application;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 
@@ -205,8 +207,29 @@ public final class Timber{
     }
 
     public static void startSessionActivity(Context context) {
-        Intent intent = new Intent(context, SessionListActivity.class);
-        context.startActivity(intent);
+        if (context == null) {
+            return; // 防止 null context
+        }
+
+        try {
+            Intent intent = new Intent(context, SessionListActivity.class);
+
+            // 根據 Context 類型決定是否需要 NEW_TASK
+            if (!(context instanceof Activity)) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+
+            // 確保 Activity 存在
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+            }
+        } catch (ActivityNotFoundException e) {
+            // 處理 Activity 不存在的情況
+            Timber.e(e, "ActivityNotFoundException");
+        } catch (Exception e) {
+            // 處理其他異常
+            Timber.e(e, "Exception");
+        }
     }
 
     public static class DbTree extends _DbTree {
