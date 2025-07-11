@@ -1,5 +1,5 @@
-# 日誌異常模組
-
+# RxTimber with DbTree
+![](imgs/logdb.gif)
 一個強大的 Android 日誌記錄庫，擴展了 Timber 功能，提供資料庫存儲、會話管理和匯出功能。
 
 ## 功能特點
@@ -182,6 +182,8 @@ LogDatabase.getInstance(context)
 ## 自定義 Tree
 
 您可以創建自己的 Tree 來自定義日誌處理邏輯：
+1. [ToastTree](app/src/main/java/com/earthbook/log_exception_module/ToastTree.java)
+2. [EbDebugTree: tag 添加"myEb"做開頭](app/src/main/java/com/earthbook/log_exception_module/EbDebugTree.java)
 
 ```java
 public class MyCustomTree extends Tree {

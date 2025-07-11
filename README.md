@@ -1,5 +1,6 @@
-# Log Anomaly Module
+# RxTimber with DbTree
 
+![](imgs/logdb.gif)
 [中文版本](README_zh.md)
 
 A powerful Android logging library that extends Timber functionality, providing database storage, session management, and export capabilities.
@@ -182,7 +183,8 @@ LogDatabase.getInstance(context)
 ## Custom Tree
 
 You can create your own Tree to customize log handling logic:
-
+1. [ToastTree](app/src/main/java/com/earthbook/log_exception_module/ToastTree.java)
+2. [EbDebugTree: let Log start with "myEb"](app/src/main/java/com/earthbook/log_exception_module/EbDebugTree.java) 
 ```java
 public class MyCustomTree extends Tree {
     @Override
