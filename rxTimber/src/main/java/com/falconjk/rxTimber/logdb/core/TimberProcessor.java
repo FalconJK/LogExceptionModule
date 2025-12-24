@@ -2,8 +2,6 @@ package com.falconjk.rxTimber.logdb.core;
 
 import android.util.Log;
 
-import com.falconjk.rxTimber.logdb.Timber;
-
 import java.util.List;
 
 import io.reactivex.rxjava3.core.Flowable;
@@ -42,36 +40,43 @@ public class TimberProcessor {
     private void initProcessor() {
         disposables.add(logProcessor
                 .onBackpressureBuffer()
-                .flatMap(logEntry -> {
+                .flatMap(logEntry -> Flowable.defer(() -> {
                     List<Tree> trees = Forest.forest();
-                    int maxConcurrency = Math.min(trees.size(), Runtime.getRuntime().availableProcessors());
 
+                    // 如果沒有任何 Tree，直接忽略此條日誌，不拋出錯誤避免終止整個串流
+                    if (trees.isEmpty()) {
+                        return Flowable.just("No Trees!!!");
+                    }
+                    // 確保並行度至少為 1，避免 trees.size() 為 0 時的問題
+                    int maxConcurrency = Math.max(1, Math.min(trees.size(), Runtime.getRuntime().availableProcessors()));
                     return Flowable.fromIterable(trees)
                             .flatMap(
                                     tree -> processTree(tree, logEntry),
-                                    true,  // 啟用並行處理
-                                    maxConcurrency  // 限制並行度
+                                    true,  // delayErrors: 讓其他 Tree 繼續處理，即使其中一個出錯
+                                    maxConcurrency
                             );
-                })
-                .subscribe()
+                }))
+                .subscribe(
+                        errorMsg -> Log.e("TimberProcessor", errorMsg),
+                        e -> {
+                            // 這裡只有在 logProcessor 本身出錯時才會進入
+                            Log.e("TimberProcessor", "Fatal error in log stream: " + e.getMessage());
+                        }
+                )
         );
     }
 
     // 將樹的處理邏輯提取為單獨的方法
-    private Flowable<Tree> processTree(Tree tree, LogEntry logEntry) {
+    private Flowable<String> processTree(Tree tree, LogEntry logEntry) {
         return Flowable.just(tree)
                 .observeOn(tree.getScheduler())
-                .map(t -> {
+                .flatMap(t -> {
                     if (t.isLoggable(logEntry.stackInfo.tag, logEntry.priority)) {
                         t.log(logEntry.priority, logEntry.stackInfo.tag, logEntry.stackInfo.link, logEntry.message, logEntry.throwable, logEntry.stackTraces);
                     }
-                    return t;
+                    return Flowable.<String>empty();
                 })
-                .onErrorResumeNext(throwable -> {
-                    Timber.e(throwable, "Error processing log entry in %s tree:", tree.getClass().getSimpleName());
-                    // Log.e("TimberProcessor", "Error processing log entry", throwable);
-                    return Flowable.empty();
-                });
+                .onErrorResumeNext(throwable -> Flowable.just(""));
     }
 
     /**

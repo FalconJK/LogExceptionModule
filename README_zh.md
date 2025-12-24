@@ -14,21 +14,28 @@
 
 ## 設置
 
-### 1. 添加依賴
+### 1. 設置 JitPack 儲存庫
+
+在您的專案級 `settings.gradle`（或根目錄 `build.gradle`）中添加以下內容：
+
+```gradle
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+### 2. 添加依賴
 
 在應用的 `build.gradle` 文件中添加以下內容：
 
 ```gradle
 dependencies {
-    implementation fileTree(dir:  "libs", includes:  ['*.jar', '*.aar'])
-    def room_version = "2.7.1"
-
-    implementation "androidx.room:room-runtime:$room_version"
-    annotationProcessor "androidx.room:room-compiler:$room_version"
-    implementation "androidx.room:room-rxjava3:$room_version"
-    implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
-    implementation 'io.reactivex.rxjava3:rxjava:3.1.5'
-    implementation 'com.google.code.gson:gson:2.13.1'
+     // 將 'Tag' 替換為最新的發布版本號 (例如 1.0.0)
+    implementation 'com.github.FalconJK:LogExceptionModule:Tag'
 }
 ```
 
@@ -286,4 +293,26 @@ long sizeInBytes = entry.getBytes();
 
 ## 許可證
 
-[在此處包含您的許可證信息]
+```
+MIT License
+
+Copyright (c) 2025 FalconJK
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

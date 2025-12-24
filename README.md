@@ -17,21 +17,28 @@ A powerful Android logging library that extends Timber functionality, providing 
 
 ## Setup
 
-### 1. Add Dependencies
+### 1. Add Setup JitPack Repository
+
+Add the following to your project-level `settings.gradle` (or root `build.gradle`):
+
+```gradle
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+### 2. Add Dependencies
 
 Add the following to your app's `build.gradle` file:
 
 ```gradle
 dependencies {
-    implementation fileTree(dir: "libs", includes: ['*.jar', '*.aar'])
-    def room_version = "2.7.1"
-
-    implementation "androidx.room:room-runtime:$room_version"
-    annotationProcessor "androidx.room:room-compiler:$room_version"
-    implementation "androidx.room:room-rxjava3:$room_version"
-    implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
-    implementation 'io.reactivex.rxjava3:rxjava:3.1.5'
-    implementation 'com.google.code.gson:gson:2.13.1'
+     // Replace 'Tag' with the latest release version (e.g. 1.0.0)
+    implementation 'com.github.FalconJK:LogExceptionModule:Tag'
 }
 ```
 
@@ -286,4 +293,26 @@ The logging system has an intelligent buffering mechanism that automatically wri
 
 ## License
 
-[Include your license information here]
+```
+MIT License
+
+Copyright (c) 2025 FalconJK
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
