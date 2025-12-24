@@ -37,8 +37,8 @@ Add the following to your app's `build.gradle` file:
 
 ```gradle
 dependencies {
-     // Replace 'Tag' with the latest release version (e.g. 1.0.0)
-    implementation 'com.github.FalconJK:LogExceptionModule:Tag'
+     // Replace 'Tag' with the latest release version (e.g. 1.0.1)
+    implementation 'com.github.FalconJK:LogExceptionModule:1.0.1'
 }
 ```
 

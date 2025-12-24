@@ -34,8 +34,8 @@ dependencyResolutionManagement {
 
 ```gradle
 dependencies {
-     // 將 'Tag' 替換為最新的發布版本號 (例如 1.0.0)
-    implementation 'com.github.FalconJK:LogExceptionModule:Tag'
+     // 將 'Tag' 替換為最新的發布版本號 (例如 1.0.1)
+    implementation 'com.github.FalconJK:LogExceptionModule:1.0.1'
 }
 ```
 
